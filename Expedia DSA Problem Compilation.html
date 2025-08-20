@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expedia OA DSA Problem Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .problem-card {
+            transition: all 0.3s ease-in-out;
+        }
+        .answer-content {
+            display: none;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .answer-content.show {
+            display: block;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">Expedia DSA Problem Compilation</h1>
+            <p class="mt-2 text-md sm:text-lg text-gray-600">An interactive quiz to test your knowledge on common problems.</p>
+        </header>
+
+        <main id="quiz-container" class="space-y-6">
+            <!-- Problems will be injected here by JavaScript -->
+        </main>
+    </div>
+
+    <script>
+        const problems = [
+            // Chapter 1
+            {
+                title: "1.1 Minimum Number of Unique IDs After Removal",
+                statement: "Given an array of integers arr and an integer k, find the least number of unique integers after removing exactly k elements.",
+                topics: "Hashing, Greedy, Sorting",
+                hint: "To maximize the number of unique elements removed within the budget of k removals, it is always optimal to remove the elements that are least expensive to eliminate—that is, those with the lowest frequency. The first step, therefore, must be to determine the frequency of each number in the array.",
+                approach: `The core strategy is greedy. First, count the frequency of each number using a hash map. Then, to eliminate unique numbers most efficiently, we should remove the numbers that appear least frequently. We can place all the frequencies into a min-heap (priority queue) to easily access the smallest frequencies. We then iteratively remove the smallest frequency groups from the heap as long as our removal budget 'k' allows. The number of unique elements remaining is the final size of the heap.`,
+                solution: `
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+#include <queue>
+
+class Solution {
+public:
+    int findLeastNumOfUniqueInts(std::vector<int>& arr, int k) {
+        std::unordered_map<int, int> freqMap;
+        for (int num : arr) {
+            freqMap[num]++;
+        }
+        std::priority_queue<int, std::vector<int>, std::greater<int>> minHeap;
+        for (auto const& [num, freq] : freqMap) {
+            minHeap.push(freq);
+        }
+        int uniqueCount = freqMap.size();
+        while (k > 0 && !minHeap.empty()) {
+            int currentFreq = minHeap.top();
+            if (k >= currentFreq) {
+                k -= currentFreq;
+                minHeap.pop();
+                uniqueCount--;
+            } else {
+                break;
+            }
+        }
+        return uniqueCount;
+    }
+};`,
+                complexity: "Time: O(N + D log D), where N is the number of elements and D is the number of distinct elements. Space: O(D) to store frequencies."
+            },
+            {
+                title: "1.2 Color Sort (Dutch National Flag Problem)",
+                statement: "Given an array nums with n objects colored red, white, or blue, represented by the integers 0, 1, and 2 respectively, sort them in-place so that objects of the same color are adjacent, with the colors in the order red, white, and blue.",
+                topics: "Arrays, Two Pointers, Sorting",
+                hint: "Partition the array into three sections (0s, 1s, and 2s) in a single pass using three pointers: 'low', 'mid', and 'high' to track the boundaries of these sections.",
+                approach: `This classic problem is solved efficiently using the Dutch National Flag algorithm. It uses three pointers: 'low', 'mid', and 'high'. The array is partitioned into four sections: 0s are to the left of 'low', 1s are between 'low' and 'mid', unprocessed elements are between 'mid' and 'high', and 2s are to the right of 'high'. The 'mid' pointer iterates through the array. If nums[mid] is 0, it's swapped with nums[low] and both pointers advance. If it's 1, only 'mid' advances. If it's 2, it's swapped with nums[high] and only 'high' is decremented (the new element at 'mid' needs to be processed).`,
+                solution: `
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+class Solution {
+public:
+    void sortColors(std::vector<int>& nums) {
+        int low = 0;
+        int mid = 0;
+        int high = nums.size() - 1;
+        while (mid <= high) {
+            switch (nums[mid]) {
+                case 0:
+                    std::swap(nums[low++], nums[mid++]);
+                    break;
+                case 1:
+                    mid++;
+                    break;
+                case 2:
+                    std::swap(nums[mid], nums[high--]);
+                    break;
+            }
+        }
+    }
+};`,
+                complexity: "Time: O(N) for a single pass. Space: O(1) for in-place sorting."
+            },
+            {
+                title: "1.3 Array Transformation: Duplicate Identification",
+                statement: "Given an integer array A, transform it into an array B such that for each index i, B[i] = 1 if there exists an index j > i with A[j] == A[i], and B[i] = 0 otherwise.",
+                topics: "Arrays, Hashing",
+                hint: "A brute-force O(N^2) solution is too slow. To optimize, consider the direction of traversal. Processing the array in reverse order simplifies the logic of checking for 'future' elements.",
+                approach: `The optimal solution involves a single pass backward through the array. A hash set is used to keep track of the elements encountered so far. When iterating from right to left (from index n-1 down to 0), for each element A[i], we first check if it's already in our 'seen' hash set. If it is, it means this element appears to the right of the current position, so we set B[i] = 1. If not, we set B[i] = 0. After processing the element, we add it to the 'seen' set.`,
+                solution: `
+#include <iostream>
+#include <vector>
+#include <unordered_set>
+
+class Solution {
+public:
+    std::vector<int> transformArray(const std::vector<int>& A) {
+        int n = A.size();
+        if (n == 0) return {};
+        std::vector<int> B(n);
+        std::unordered_set<int> seen;
+        for (int i = n - 1; i >= 0; --i) {
+            if (seen.count(A[i])) {
+                B[i] = 1;
+            } else {
+                B[i] = 0;
+            }
+            seen.insert(A[i]);
+        }
+        return B;
+    }
+};`,
+                complexity: "Time: O(N) for a single pass. Space: O(D) for the hash set, where D is the number of distinct elements."
+            },
+            // Chapter 2
+            {
+                title: "2.1 Counting Good Binary Strings",
+                statement: "Given integers low, high, zero, and one, find the number of different 'good' binary strings that can be constructed. A good string has a length between low and high (inclusive) and is formed by repeatedly appending a block of 'zero' 0s or 'one' 1s. Return the count modulo 10^9 + 7.",
+                topics: "Dynamic Programming",
+                hint: "The number of ways to form a string of length 'i' depends on the number of ways to form shorter strings. This suggests a dynamic programming approach. The number of ways to form a string of length 'i' is the sum of ways to form strings of length 'i - zero' and 'i - one'.",
+                approach: `This is a classic dynamic programming problem. We define a DP array, dp, of size 'high + 1', where dp[i] stores the number of ways to construct a string of exactly length i. The base case is dp[0] = 1 (one way to form an empty string). We then iterate from i = 1 to 'high'. The recurrence relation is dp[i] = (dp[i - zero] + dp[i - one]) % MOD, considering only valid indices (i >= zero and i >= one). While filling the DP table, we sum up the values of dp[i] for all i in the range [low, high] to get the final answer.`,
+                solution: `
+#include <iostream>
+#include <vector>
+
+class Solution {
+public:
+    int countGoodStrings(int low, int high, int zero, int one) {
+        const int MOD = 1e9 + 7;
+        std::vector<int> dp(high + 1, 0);
+        dp[0] = 1;
+        int totalGoodStrings = 0;
+        for (int i = 1; i <= high; ++i) {
+            if (i >= zero) {
+                dp[i] = (dp[i] + dp[i - zero]) % MOD;
+            }
+            if (i >= one) {
+                dp[i] = (dp[i] + dp[i - one]) % MOD;
+            }
+            if (i >= low) {
+                totalGoodStrings = (totalGoodStrings + dp[i]) % MOD;
+            }
+        }
+        return totalGoodStrings;
+    }
+};`,
+                complexity: "Time: O(high), as we iterate up to 'high'. Space: O(high) for the DP array."
+            },
+            {
+                title: "2.2 Balance Parentheses",
+                statement: "Given a string s containing just the characters '(', ')', '{', '}', '[' and ']', determine if the input string is valid. An input string is valid if open brackets are closed by the same type of bracket and in the correct order.",
+                topics: "Stacks, Strings",
+                hint: "The core of the problem lies in the nesting rule: the most recently opened bracket must be the first one to be closed. This Last-In, First-Out (LIFO) behavior points directly to using a stack.",
+                approach: `Use a stack to keep track of open brackets. Iterate through the string. If an opening bracket is found, push it onto the stack. If a closing bracket is found, check if the stack is empty. If it is, the string is invalid. Otherwise, check if the top of the stack is the matching opening bracket. If it matches, pop the stack. If it doesn't, the string is invalid. After iterating through the entire string, the string is valid only if the stack is empty.`,
+                solution: `
+#include <iostream>
+#include <string>
+#include <stack>
+#include <unordered_map>
+
+class Solution {
+public:
+    bool isValid(std::string s) {
+        std::stack<char> openBrackets;
+        std::unordered_map<char, char> mapping = {{')', '('}, {'}', '{'}, {']', '['}};
+        for (char c : s) {
+            if (mapping.count(c)) {
+                if (openBrackets.empty() || openBrackets.top() != mapping[c]) {
+                    return false;
+                }
+                openBrackets.pop();
+            } else {
+                openBrackets.push(c);
+            }
+        }
+        return openBrackets.empty();
+    }
+};`,
+                complexity: "Time: O(N) for a single pass over the string. Space: O(N) in the worst case for the stack."
+            },
+            {
+                title: "2.3 String Compression",
+                statement: "Given an array of characters 'chars', compress it in-place. The compressed string should not be returned separately but stored in the input character array. Group lengths of 10 or longer will be split into multiple characters. Return the new length of the array.",
+                topics: "Strings, Two Pointers",
+                hint: "The in-place requirement suggests a two-pointer approach. Use a 'read' pointer to scan the array and a 'write' pointer to place the compressed characters and counts at the beginning of the same array.",
+                approach: `Use a 'read' pointer 'i' to iterate through the array and a 'write' pointer 'j' to keep track of the position for the compressed result. In a loop, identify a group of consecutive identical characters starting at 'i'. Count the length of this group. Write the character to chars[j++]. If the count is greater than 1, convert the count to a string and write its digits to chars[j++], one by one. Finally, advance the 'read' pointer 'i' to the start of the next new character. The final value of 'j' is the new length.`,
+                solution: `
+#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
+
+class Solution {
+public:
+    int compress(std::vector<char>& chars) {
+        int i = 0, j = 0;
+        int n = chars.size();
+        while (i < n) {
+            char currentChar = chars[i];
+            int count = 0;
+            int k = i;
+            while (k < n && chars[k] == currentChar) {
+                count++;
+                k++;
+            }
+            chars[j++] = currentChar;
+            if (count > 1) {
+                std::string countStr = std::to_string(count);
+                for (char c : countStr) {
+                    chars[j++] = c;
+                }
+            }
+            i = k;
+        }
+        return j;
+    }
+};`,
+                complexity: "Time: O(N), as each character is visited a constant number of times. Space: O(1) for in-place modification."
+            },
+            {
+                title: "2.4 Simple Cipher",
+                statement: "Given an encrypted string of uppercase English letters and an integer key k, decrypt the string. Decryption is performed by replacing each letter with the letter that is k positions away in the counter-clockwise direction on a circular alphabet wheel.",
+                topics: "Strings, Math",
+                hint: "This circular shift problem is a classic use case for modular arithmetic. The main challenge is to handle the wrap-around correctly, especially for negative results after subtraction.",
+                approach: `Iterate through each character of the encrypted string. For each character, convert it to a 0-25 index (e.g., 'A' -> 0). Apply the counter-clockwise shift by subtracting 'k'. To handle the wrap-around and potential negative numbers robustly, use the formula: new_index = (index - k % 26 + 26) % 26. This ensures the result is always a positive index between 0 and 25. Convert the new index back to a character and append it to the result string.`,
+                solution: `
+#include <iostream>
+#include <string>
+
+class Solution {
+public:
+    std::string simpleCipher(const std::string& encrypted, int k) {
+        std::string decrypted = "";
+        for (char c : encrypted) {
+            if (c >= 'A' && c <= 'Z') {
+                int index = c - 'A';
+                int new_index = (index - (k % 26) + 26) % 26;
+                decrypted += (char)(new_index + 'A');
+            } else {
+                decrypted += c;
+            }
+        }
+        return decrypted;
+    }
+};`,
+                complexity: "Time: O(N) for a single pass. Space: O(N) to store the decrypted string."
+            },
+            // Chapter 3
+            {
+                title: "3.1 Connected Groups in a Graph",
+                statement: "You are given an integer n representing the number of nodes (labeled 0 to n-1) and a list of edges, where each edge [u, v] connects node u and node v. Find the number of connected components in the graph.",
+                topics: "Graphs, BFS, DFS, Disjoint Set Union (DSU)",
+                hint: "There are two main strategies: traversal-based (DFS/BFS) or union-based (DSU). For the traversal approach, keep a 'visited' array and start a new traversal for each unvisited node, counting how many times you start. For DSU, start with 'n' components and decrement the count each time you successfully unite two nodes that were in different components.",
+                approach: `The Disjoint Set Union (DSU) or Union-Find data structure is highly efficient for this. Initialize a DSU structure with 'n' nodes, where each node is its own parent (n components). Iterate through the list of edges. For each edge [u, v], perform a 'union' operation. The union operation finds the representatives (roots) of u and v. If they are different, it merges their sets and decrements the component count by one. If they are already the same, the edge is within an existing component, and the count doesn't change. The final component count is the answer.`,
+                solution: `
+#include <iostream>
+#include <vector>
+#include <numeric>
+
+class DSU {
+    std::vector<int> parent;
+    std::vector<int> rank;
+    int components;
+public:
+    DSU(int n) : components(n) {
+        parent.resize(n);
+        std::iota(parent.begin(), parent.end(), 0);
+        rank.assign(n, 0);
+    }
+    int find(int i) {
+        if (parent[i] == i) return i;
+        return parent[i] = find(parent[i]);
+    }
+    void unite(int i, int j) {
+        int root_i = find(i);
+        int root_j = find(j);
+        if (root_i != root_j) {
+            if (rank[root_i] < rank[root_j]) std::swap(root_i, root_j);
+            parent[root_j] = root_i;
+            if (rank[root_i] == rank[root_j]) rank[root_i]++;
+            components--;
+        }
+    }
+    int getComponents() const { return components; }
+};
+
+class Solution {
+public:
+    int countComponents(int n, std::vector<std::vector<int>>& edges) {
+        DSU dsu(n);
+        for (const auto& edge : edges) {
+            dsu.unite(edge[0], edge[1]);
+        }
+        return dsu.getComponents();
+    }
+};`,
+                complexity: "Time: O(E * α(V)), where α is the Inverse Ackermann function, making it nearly linear. Space: O(V) for the DSU arrays."
+            },
+            {
+                title: "3.2 Bipartite Graph Detection",
+                statement: "Given an undirected graph, return true if and only if it is bipartite. A graph is bipartite if its vertices can be partitioned into two disjoint sets such that every edge connects a vertex in one set to one in the other.",
+                topics: "Graphs, BFS, DFS, Graph Coloring",
+                hint: "The problem is equivalent to checking if the graph can be 2-colored. Attempt to color the graph using two colors (e.g., 1 and 2). Start a traversal (like BFS) from an uncolored node, color it, and then color all its neighbors with the opposite color. If you ever find an edge connecting two nodes of the same color, the graph is not bipartite.",
+                approach: `Use a 'colors' array to store the color of each node (0 for uncolored, 1 for color A, 2 for color B). Iterate through all nodes to handle disconnected components. If a node is uncolored, start a BFS from it. Color the starting node with color 1 and add it to a queue. In the BFS loop, for each dequeued node 'u', iterate through its neighbors 'v'. If a neighbor 'v' is uncolored, color it with the opposite color of 'u' and enqueue it. If 'v' is already colored and has the same color as 'u', a conflict is found, and the graph is not bipartite. If the entire process completes without conflicts, it is bipartite.`,
+                solution: `
+#include <iostream>
+#include <vector>
+#include <queue>
+
+class Solution {
+public:
+    bool isBipartite(std::vector<std::vector<int>>& graph) {
+        int n = graph.size();
+        std::vector<int> colors(n, 0);
+        for (int i = 0; i < n; ++i) {
+            if (colors[i] == 0) {
+                std::queue<int> q;
+                q.push(i);
+                colors[i] = 1;
+                while (!q.empty()) {
+                    int u = q.front(); q.pop();
+                    for (int v : graph[u]) {
+                        if (colors[v] == 0) {
+                            colors[v] = 3 - colors[u];
+                            q.push(v);
+                        } else if (colors[v] == colors[u]) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        return true;
+    }
+};`,
+                complexity: "Time: O(V + E), as each vertex and edge is visited once. Space: O(V) for the colors array and the queue."
+            },
+            // Chapter 4
+            {
+                title: "4.1 Activity Selection Problem",
+                statement: "You are given n activities with their start and finish times. Select the maximum number of non-overlapping activities that can be performed by a single person.",
+                topics: "Greedy Algorithms, Sorting",
+                hint: "To maximize the number of activities, it's always optimal to choose the activity that finishes earliest. This strategy leaves the maximum amount of time available for subsequent activities. Therefore, the crucial first step is to sort the activities by their finish times.",
+                approach: `This is a classic greedy problem. First, sort the activities in ascending order of their finish times. Select the first activity in the sorted list (it's guaranteed to be part of an optimal solution). Then, iterate through the rest of the sorted activities. For each activity, if its start time is greater than or equal to the finish time of the most recently selected activity, it means there is no overlap. Select this activity and update the 'last finish time'. The total count of selected activities is the answer.`,
+                solution: `
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+struct Activity { int id, start, finish; };
+
+bool compareActivities(const Activity& a, const Activity& b) {
+    return a.finish < b.finish;
+}
+
+class Solution {
+public:
+    int selectActivities(std::vector<Activity>& activities) {
+        if (activities.empty()) return 0;
+        std::sort(activities.begin(), activities.end(), compareActivities);
+        int count = 1;
+        int last_finish_time = activities[0].finish;
+        for (size_t j = 1; j < activities.size(); ++j) {
+            if (activities[j].start >= last_finish_time) {
+                count++;
+                last_finish_time = activities[j].finish;
+            }
+        }
+        return count;
+    }
+};`,
+                complexity: "Time: O(N log N), dominated by the sorting step. Space: O(1) if sorting is in-place."
+            },
+            {
+                title: "4.2 Maximum Profit in Job Scheduling",
+                statement: "Given startTime, endTime, and profit arrays, return the maximum profit you can take such that there are no two jobs in the subset with overlapping time ranges.",
+                topics: "Greedy, Dynamic Programming, Binary Search",
+                hint: "This is a classic Dynamic Programming problem (Weighted Interval Scheduling). Sort the jobs by their end times. For each job, you have two choices: either include it or skip it. If you include it, you must find the maximum profit from the remaining compatible jobs (those that finish before the current job starts).",
+                approach: `Combine the inputs into a list of 'Job' objects and sort them by their end times. Define a DP array where dp[i] stores the maximum profit considering the first 'i' jobs. To compute dp[i], we consider job 'i-1'. The max profit is the maximum of two choices: 1) Not including job 'i-1', in which case the profit is dp[i-1]. 2) Including job 'i-1', in which case the profit is profit[i-1] + the max profit from compatible jobs. The latest compatible job (one that ends before startTime[i-1]) can be found efficiently using binary search on the sorted end times. The recurrence is dp[i] = max(dp[i-1], profit[i-1] + dp[j]), where 'j' is the index of the last non-conflicting job.`,
+                solution: `
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+struct Job { int start, end, profit; };
+
+bool compareJobs(const Job& a, const Job& b) { return a.end < b.end; }
+
+class Solution {
+public:
+    int jobScheduling(std::vector<int>& startTime, std::vector<int>& endTime, std::vector<int>& profit) {
+        int n = startTime.size();
+        std::vector<Job> jobs(n);
+        for (int i = 0; i < n; ++i) jobs[i] = {startTime[i], endTime[i], profit[i]};
+        std::sort(jobs.begin(), jobs.end(), compareJobs);
+        std::vector<int> dp(n, 0);
+        dp[0] = jobs[0].profit;
+        for (int i = 1; i < n; ++i) {
+            int currentProfit = jobs[i].profit;
+            int prevJobIndex = -1;
+            int low = 0, high = i - 1;
+            while(low <= high){
+                int mid = low + (high - low) / 2;
+                if(jobs[mid].end <= jobs[i].start){
+                    prevJobIndex = mid;
+                    low = mid + 1;
+                } else {
+                    high = mid - 1;
+                }
+            }
+            if (prevJobIndex != -1) currentProfit += dp[prevJobIndex];
+            dp[i] = std::max(dp[i - 1], currentProfit);
+        }
+        return dp[n - 1];
+    }
+};`,
+                complexity: "Time: O(N log N) due to sorting and binary search inside the loop. Space: O(N) for the jobs and DP arrays."
+            },
+            {
+                title: "4.3 Maximum Score from Array Partitioning",
+                statement: "You are given two sorted arrays of distinct integers, nums1 and nums2. You can start from index 0 of either array. At common elements, a switch between arrays is permitted. The score of a path is the sum of its unique values. Find the maximum possible score.",
+                topics: "Arrays, Two Pointers, Greedy",
+                hint: "The arrays are sorted, which is a strong hint to use a two-pointer approach. The key decision points occur only at elements that are common to both arrays. At each common element, compare the accumulated sums from both array segments and greedily choose the path with the higher score.",
+                approach: "Use a synchronized two-pointer traversal. Maintain two running sums, one for each array. Iterate through both arrays. When nums1[i] < nums2[j], add nums1[i] to sum1 and advance i. When nums2[j] < nums1[i], add nums2[j] to sum2 and advance j. When a common element is found (nums1[i] == nums2[j]), it's a merge point. The best path leading to this point is the one with the higher sum. Update both sums to max(sum1, sum2), then add the common element to both. Continue until both arrays are traversed. The final answer is the maximum of the two sums.",
+                solution: `
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+class Solution {
+public:
+    int maxSum(std::vector<int>& nums1, std::vector<int>& nums2) {
+        long long sum1 = 0, sum2 = 0;
+        int i = 0, j = 0;
+        int n1 = nums1.size(), n2 = nums2.size();
+        const int MOD = 1e9 + 7;
+        while (i < n1 || j < n2) {
+            if (i < n1 && (j == n2 || nums1[i] < nums2[j])) {
+                sum1 += nums1[i++];
+            } else if (j < n2 && (i == n1 || nums2[j] < nums1[i])) {
+                sum2 += nums2[j++];
+            } else {
+                long long max_sum = std::max(sum1, sum2) + nums1[i];
+                sum1 = max_sum;
+                sum2 = max_sum;
+                i++; j++;
+            }
+        }
+        return std::max(sum1, sum2) % MOD;
+    }
+};`,
+                complexity: "Time: O(N+M), where N and M are the lengths of the arrays. Space: O(1)."
+            },
+            {
+                title: "5.1 Grouping People by Group Size",
+                statement: "You are given an integer array groupSizes, where groupSizes[i] is the size of the group that person i is in. Return a list of groups of people, such that each person i is in a group of size groupSizes[i].",
+                topics: "Hashing",
+                hint: "Use a hash map where the key is the group size and the value is a list of people who need to be in a group of that size. When a list for a certain size becomes full, add it to the result and clear it.",
+                approach: "Create a hash map from group size to a vector of person IDs. Iterate through the input array from i = 0 to n-1. For each person i, add them to the map at key groupSizes[i]. If, after adding, the vector for that key reaches its required size, move the vector to your result list and clear it from the map.",
+                solution: `
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+
+class Solution {
+public:
+    std::vector<std::vector<int>> groupThePeople(std::vector<int>& groupSizes) {
+        std::vector<std::vector<int>> result;
+        std::unordered_map<int, std::vector<int>> groupsMap;
+        for (int i = 0; i < groupSizes.size(); ++i) {
+            int size = groupSizes[i];
+            groupsMap[size].push_back(i);
+            if (groupsMap[size].size() == size) {
+                result.push_back(groupsMap[size]);
+                groupsMap[size].clear();
+            }
+        }
+        return result;
+    }
+};`,
+                complexity: "Time: O(N), where N is the number of people. Space: O(N) for the hash map."
+            },
+            {
+                title: "5.2 Shopping Cart Billing",
+                statement: "Given a list of products (each with a price and discount tags) and a list of discounts (defining each tag's effect), calculate the minimum total cost to purchase all products. The 'best' discount (the one resulting in the lowest price) must be applied for each product.",
+                topics: "Hashing, Simulation",
+                hint: "This is a direct implementation problem. Pre-process the discounts into a hash map for fast lookup. Then, for each product, calculate the price for all its applicable discounts, find the minimum, and add it to a total.",
+                approach: "First, create a hash map from discount tag (string) to discount details (type, amount). Then, iterate through each product. For a product, start with its base price as the minimum price. Iterate through its discount tags. For each tag, look it up in the map, calculate the discounted price based on the type (direct price, percentage off, or fixed reduction), round it, and update the product's minimum price if the new price is lower. Add this final minimum price to a running total. Return the total cost.",
+                solution: `
+#include <iostream>
+#include <vector>
+#include <string>
+#include <unordered_map>
+#include <cmath>
+#include <algorithm>
+
+struct Discount { int type; int amount; };
+
+class Solution {
+public:
+    int findLowestPrice(const std::vector<std::vector<std::string>>& products,
+                          const std::vector<std::vector<std::string>>& discounts) {
+        std::unordered_map<std::string, Discount> discountMap;
+        for (const auto& d : discounts) {
+            discountMap[d[0]] = {std::stoi(d[1]), std::stoi(d[2])};
+        }
+        long long totalCost = 0;
+        for (const auto& product : products) {
+            double basePrice = std::stod(product[0]);
+            double minPrice = basePrice;
+            for (size_t i = 1; i < product.size(); ++i) {
+                const std::string& tag = product[i];
+                if (tag == "EMPTY" || discountMap.find(tag) == discountMap.end()) continue;
+                
+                const Discount& discount = discountMap.at(tag);
+                double currentPrice = basePrice;
+                if (discount.type == 0) currentPrice = discount.amount;
+                else if (discount.type == 1) currentPrice = basePrice * (1.0 - discount.amount / 100.0);
+                else if (discount.type == 2) currentPrice = basePrice - discount.amount;
+                
+                minPrice = std::min(minPrice, currentPrice);
+            }
+            totalCost += static_cast<long long>(round(minPrice));
+        }
+        return totalCost;
+    }
+};`,
+                complexity: "Time: O(D + P*T), where D is discounts, P is products, and T is max tags per product. Space: O(D) for the discount map."
+            },
+            {
+                title: "5.3 Rate Limiter Design",
+                statement: "Design a class or system that can enforce a rate limit, e.g., no more than X requests per Y seconds for a given user.",
+                topics: "Queues, System Design",
+                hint: "A good approach for a single-node implementation is the 'Sliding Window Log' algorithm. Use a queue for each user to store the timestamps of their requests within the last time window.",
+                approach: "Use a hash map to map a user ID to a queue of their request timestamps. When a request arrives for a user at the current time: 1. Remove all timestamps from the front of the user's queue that are older than (currentTime - windowSize). 2. After pruning, if the queue's size is less than the request limit, the request is allowed. Add the current timestamp to the back of the queue and return true. 3. Otherwise, the request is rejected; return false.",
+                solution: `
+#include <iostream>
+#include <queue>
+#include <chrono>
+#include <unordered_map>
+#include <string>
+
+class RateLimiter {
+private:
+    std::unordered_map<std::string, std::queue<long long>> userRequests;
+    int requestLimit;
+    int windowSizeInSeconds;
+public:
+    RateLimiter(int limit, int window) : requestLimit(limit), windowSizeInSeconds(window) {}
+    bool isAllowed(const std::string& userId) {
+        long long currentTime = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::system_clock::now().time_since_epoch()
+        ).count();
+        
+        auto& userQueue = userRequests[userId];
+        
+        while (!userQueue.empty() && userQueue.front() <= currentTime - windowSizeInSeconds) {
+            userQueue.pop();
+        }
+        
+        if (userQueue.size() < requestLimit) {
+            userQueue.push(currentTime);
+            return true;
+        }
+        return false;
+    }
+};`,
+                complexity: "Time: Amortized O(1) per request. Space: O(U*L), where U is unique users and L is the request limit."
+            }
+        ];
+
+        const quizContainer = document.getElementById('quiz-container');
+
+        problems.forEach((problem, index) => {
+            const card = document.createElement('div');
+            card.className = 'problem-card bg-white rounded-lg shadow-md border border-gray-200 p-6';
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <h2 class="text-xl font-bold text-gray-800 mb-3">${problem.title}</h2>
+                    <button class="toggle-answer-btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
+                        Toggle Answer
+                    </button>
+                </div>
+                <p class="text-gray-700 mb-4">${problem.statement}</p>
+                
+                <div class="answer-content mt-6 border-t border-gray-200 pt-4">
+                    <div class="space-y-4">
+                        <div>
+                            <h3 class="font-semibold text-lg text-gray-900">Topics:</h3>
+                            <p class="text-gray-600">${problem.topics}</p>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-lg text-gray-900">Hint:</h3>
+                            <p class="text-gray-600 italic">${problem.hint}</p>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-lg text-gray-900">Approach:</h3>
+                            <p class="text-gray-600">${problem.approach}</p>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-lg text-gray-900">C++ Solution:</h3>
+                            <pre class="bg-gray-900 text-white p-4 rounded-md text-sm overflow-x-auto"><code>${problem.solution.trim().replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-lg text-gray-900">Complexity Analysis:</h3>
+                            <p class="text-gray-600">${problem.complexity}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            quizContainer.appendChild(card);
+        });
+
+        document.querySelectorAll('.toggle-answer-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const answerContent = button.closest('.problem-card').querySelector('.answer-content');
+                answerContent.classList.toggle('show');
+            });
+        });
+
+    </script>
+</body>
+</html>

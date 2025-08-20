@@ -33,11 +33,15 @@
         <header class="text-center mb-8">
             <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">Expedia DSA Problem Compilation</h1>
             <p class="mt-2 text-md sm:text-lg text-gray-600">An interactive quiz to test your knowledge on common problems.</p>
+            <div class="mt-6">
+                <button id="global-toggle-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75">
+                    Collapse All
+                </button>
+            </div>
         </header>
 
         <main id="quiz-container" class="space-y-6">
-            <!-- Problems will be injected here by JavaScript -->
-        </main>
+            </main>
     </div>
 
     <script>
@@ -646,6 +650,7 @@ public:
             quizContainer.appendChild(card);
         });
 
+        // Individual toggle button functionality
         document.querySelectorAll('.toggle-answer-btn').forEach(button => {
             button.addEventListener('click', () => {
                 const answerContent = button.closest('.problem-card').querySelector('.answer-content');
@@ -653,6 +658,38 @@ public:
             });
         });
 
+        // --- NEW CODE FOR GLOBAL TOGGLE ---
+
+        const globalToggleButton = document.getElementById('global-toggle-btn');
+        const allAnswers = document.querySelectorAll('.answer-content');
+
+        // Default: Keep all toggles expanded
+        allAnswers.forEach(content => {
+            content.classList.add('show');
+        });
+
+        // Functionality for the global collapse/expand button
+        globalToggleButton.addEventListener('click', () => {
+            const isCurrentlyCollapsing = globalToggleButton.textContent.trim() === 'Collapse All';
+            
+            if (isCurrentlyCollapsing) {
+                allAnswers.forEach(content => {
+                    content.classList.remove('show');
+                });
+                globalToggleButton.textContent = 'Expand All';
+                globalToggleButton.classList.replace('bg-indigo-600', 'bg-green-600');
+                globalToggleButton.classList.replace('hover:bg-indigo-700', 'hover:bg-green-700');
+                globalToggleButton.classList.replace('focus:ring-indigo-500', 'focus:ring-green-500');
+            } else {
+                allAnswers.forEach(content => {
+                    content.classList.add('show');
+                });
+                globalToggleButton.textContent = 'Collapse All';
+                globalToggleButton.classList.replace('bg-green-600', 'bg-indigo-600');
+                globalToggleButton.classList.replace('hover:bg-green-700', 'hover:bg-indigo-700');
+                globalToggleButton.classList.replace('focus:ring-green-500', 'focus:ring-indigo-500');
+            }
+        });
     </script>
 </body>
 </html>

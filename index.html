@@ -114,15 +114,15 @@
                     const listItem = document.createElement('li');
                     const link = document.createElement('a');
 
-                    // Create a pretty name from the filename
-                    // 'expedia-oa-problems-compilation.html' -> 'Expedia OA Problems Compilation'
-                    const prettyName = file.name
-                        .replace('.html', '')
-                        .replace(/-/g, ' ')
-                        .replace(/\b\w/g, char => char.toUpperCase());
+                    // Create a user-friendly name by simply removing the .html extension
+                    const prettyName = file.name.replace('.html', '');
 
-                    link.href = `./${file.name}`;
+                    // Set the link text to the pretty name
                     link.textContent = prettyName;
+                    
+                    // Set the href for the link. It's crucial to encode the URI component
+                    // to handle spaces and other special characters correctly in the URL.
+                    link.href = `./${encodeURIComponent(file.name)}`;
                     
                     listItem.appendChild(link);
                     fileListElement.appendChild(listItem);

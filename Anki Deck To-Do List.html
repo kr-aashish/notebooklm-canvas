@@ -358,9 +358,24 @@
                 else if (target.closest('.accordion-toggle')) {
                     const content = deckItem.querySelector('.accordion-content');
                     if (content) {
+                        const isCurrentlyOpen = !!content.style.maxHeight;
+                        content.style.maxHeight = isCurrentlyOpen ? null : content.scrollHeight + 'px';
+                        
                         const chevron = deckItem.querySelector('svg:last-of-type');
-                        if(chevron) chevron.classList.toggle('rotate-180');
-                        content.style.maxHeight = content.style.maxHeight ? null : content.scrollHeight + "px";
+                        if(chevron) {
+                            chevron.classList.toggle('rotate-180', !isCurrentlyOpen);
+                        }
+
+                        // Traverse up the DOM to re-adjust parent heights
+                        // This fixes the issue of content being cut off.
+                        let parentDeck = deckItem.parentElement.closest('.deck-item');
+                        while (parentDeck) {
+                            const parentContent = parentDeck.querySelector('.accordion-content');
+                            if (parentContent && parentContent.style.maxHeight) {
+                                parentContent.style.maxHeight = parentContent.scrollHeight + 'px';
+                            }
+                            parentDeck = parentDeck.parentElement.closest('.deck-item');
+                        }
                     }
                 }
                 

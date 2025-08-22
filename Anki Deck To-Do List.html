@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anki Deck To-Do List</title>
+    <title>Anki Study Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,6 +33,13 @@
             to { opacity: 1; transform: translateY(0); }
         }
         .deck-item { animation: fadeInSlideUp 0.5s ease-out forwards; opacity: 0; }
+
+        /* --- Tab Content Fade-in --- */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .tab-content { animation: fadeIn 0.5s ease-in-out; }
 
         /* --- Checkmark Styles & Animations for Pills --- */
         .status-pill-checkmark__circle {
@@ -71,7 +78,10 @@
             <p class="text-gray-400 mt-2 text-lg">Your personalized deck-by-deck study plan.</p>
         </header>
 
-        <main id="deck-container" class="space-y-3">
+        <div role="tablist" class="flex flex-wrap sm:space-x-2 md:space-x-4 mb-6 rounded-lg bg-gray-800 p-2 overflow-x-auto">
+            </div>
+
+        <main id="tab-content-container" class="space-y-3">
             </main>
         
         <footer class="text-center mt-12 text-gray-500 text-sm">
@@ -245,7 +255,8 @@
         ];
 
         document.addEventListener('DOMContentLoaded', () => {
-            const container = document.getElementById('deck-container');
+            const tabContainer = document.querySelector('[role="tablist"]');
+            const tabContentContainer = document.getElementById('tab-content-container');
             let completionState = JSON.parse(localStorage.getItem('ankiCompletionState')) || {};
 
             function saveState() {
@@ -339,11 +350,65 @@
                 return deckItem;
             }
 
-            deckData.forEach(deck => container.appendChild(createDeckHTML(deck)));
-            
-            // --- Event Listeners ---
-            container.addEventListener('click', function(e) {
+            // --- UI Initialization ---
+            deckData.forEach((deck, index) => {
+                // Create Tab Button
+                const tabButton = document.createElement('button');
+                const tabId = `tab-${index}`;
+                tabButton.id = `tab-btn-${index}`;
+                tabButton.setAttribute('role', 'tab');
+                tabButton.setAttribute('aria-controls', tabId);
+                tabButton.className = `flex-grow sm:flex-grow-0 min-w-max px-4 py-2 text-sm md:text-base font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring focus:ring-emerald-500/50`;
+                tabButton.textContent = deck.name;
+                tabButton.dataset.target = tabId;
+
+                // Create Tab Content
+                const tabContent = document.createElement('div');
+                tabContent.id = tabId;
+                tabContent.setAttribute('role', 'tabpanel');
+                tabContent.className = 'hidden tab-content';
+                
+                // Populate content with nested decks
+                tabContent.appendChild(createDeckHTML(deck, 0));
+
+                tabContainer.appendChild(tabButton);
+                tabContentContainer.appendChild(tabContent);
+            });
+
+            // Set the first tab as active by default
+            const firstTab = document.querySelector('[role="tablist"] button');
+            const firstContent = document.querySelector('[role="tabpanel"]');
+            if (firstTab && firstContent) {
+                firstTab.classList.add('bg-gray-700', 'text-white');
+                firstContent.classList.remove('hidden');
+                firstContent.classList.add('visible');
+            }
+
+            // --- Tab & Accordion Event Listeners ---
+            document.addEventListener('click', function(e) {
                 const target = e.target;
+                
+                // Tab switching logic
+                const tabButton = target.closest('[role="tab"]');
+                if (tabButton) {
+                    // Deactivate all tabs and content
+                    document.querySelectorAll('[role="tab"]').forEach(btn => btn.classList.remove('bg-gray-700', 'text-white'));
+                    document.querySelectorAll('[role="tabpanel"]').forEach(panel => panel.classList.add('hidden'));
+
+                    // Activate clicked tab and its content
+                    tabButton.classList.add('bg-gray-700', 'text-white');
+                    const targetId = tabButton.dataset.target;
+                    const activeContent = document.getElementById(targetId);
+                    if (activeContent) {
+                        activeContent.classList.remove('hidden');
+                        // Reset accordion heights when switching tabs to avoid overflow
+                        activeContent.querySelectorAll('.accordion-content').forEach(content => {
+                            content.style.maxHeight = null;
+                        });
+                        activeContent.querySelectorAll('svg').forEach(svg => svg.classList.remove('rotate-180'));
+                    }
+                }
+ 
                 const deckItem = target.closest('.deck-item');
                 if (!deckItem) return;
  
@@ -366,18 +431,15 @@
                             chevron.classList.toggle('rotate-180', !isCurrentlyOpen);
                         }
 
-                        // Defer the parent height update to allow for the child's CSS transition to finish.
-                        // This prevents the new accordion from immediately collapsing.
-                        setTimeout(() => {
-                            let parentDeck = deckItem.parentElement.closest('.deck-item');
-                            while (parentDeck) {
-                                const parentContent = parentDeck.querySelector('.accordion-content');
-                                if (parentContent && parentContent.style.maxHeight) {
-                                    parentContent.style.maxHeight = parentContent.scrollHeight + 'px';
-                                }
-                                parentDeck = parentDeck.parentElement.closest('.deck-item');
+                        // Traverse up the DOM to re-adjust parent heights
+                        let parentDeck = deckItem.parentElement.closest('.deck-item');
+                        while (parentDeck) {
+                            const parentContent = parentDeck.querySelector('.accordion-content');
+                            if (parentContent && parentContent.style.maxHeight) {
+                                parentContent.style.maxHeight = parentContent.scrollHeight + 'px';
                             }
-                        }, 10);
+                            parentDeck = parentDeck.parentElement.closest('.deck-item');
+                        }
                     }
                 }
                 
@@ -395,7 +457,7 @@
                 progressBar.style.width = `${percentage}%`;
             }
 
-            document.querySelectorAll('#deck-container > .deck-item').forEach(item => {
+            document.querySelectorAll('#tab-content-container .deck-item').forEach(item => {
                 item.dataset.toplevel = 'true';
                 updateProgress(item); // Initial progress calculation
             });

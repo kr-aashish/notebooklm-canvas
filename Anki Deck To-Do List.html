@@ -366,16 +366,18 @@
                             chevron.classList.toggle('rotate-180', !isCurrentlyOpen);
                         }
 
-                        // Traverse up the DOM to re-adjust parent heights
-                        // This fixes the issue of content being cut off.
-                        let parentDeck = deckItem.parentElement.closest('.deck-item');
-                        while (parentDeck) {
-                            const parentContent = parentDeck.querySelector('.accordion-content');
-                            if (parentContent && parentContent.style.maxHeight) {
-                                parentContent.style.maxHeight = parentContent.scrollHeight + 'px';
+                        // Defer the parent height update to allow for the child's CSS transition to finish.
+                        // This prevents the new accordion from immediately collapsing.
+                        setTimeout(() => {
+                            let parentDeck = deckItem.parentElement.closest('.deck-item');
+                            while (parentDeck) {
+                                const parentContent = parentDeck.querySelector('.accordion-content');
+                                if (parentContent && parentContent.style.maxHeight) {
+                                    parentContent.style.maxHeight = parentContent.scrollHeight + 'px';
+                                }
+                                parentDeck = parentDeck.parentElement.closest('.deck-item');
                             }
-                            parentDeck = parentDeck.parentElement.closest('.deck-item');
-                        }
+                        }, 10);
                     }
                 }
                 

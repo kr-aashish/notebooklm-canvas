@@ -272,13 +272,14 @@
             }
 
             function createDeckHTML(deck, level = 0, parentPath = '') {
-                const isTopLevel = level === 0;
+                // An item with level 0 is a main subsection within a tab.
+                const isTopLevelInSection = level === 0;
                 const currentPath = parentPath ? `${parentPath}>${deck.name}` : deck.name;
                 
                 const deckItem = document.createElement('div');
                 deckItem.className = 'deck-item bg-gray-800 rounded-lg shadow-lg transition-all duration-300';
                 deckItem.dataset.id = currentPath;
-                if (isTopLevel) deckItem.classList.add('border', 'border-gray-700');
+                if (isTopLevelInSection) deckItem.classList.add('border', 'border-gray-700');
 
                 const header = document.createElement('div');
                 header.className = 'flex items-center justify-between p-4 cursor-pointer hover:bg-gray-700/50 rounded-t-lg accordion-toggle';
@@ -287,7 +288,7 @@
                 headerLeft.className = 'flex items-center space-x-3';
                 
                 const deckName = document.createElement('span');
-                deckName.className = `deck-name font-semibold transition-colors ${isTopLevel ? 'text-xl text-emerald-400' : 'text-gray-300'}`;
+                deckName.className = `deck-name font-semibold transition-colors ${isTopLevelInSection ? 'text-xl text-emerald-400' : 'text-gray-300'}`;
                 deckName.textContent = deck.name;
                 
                 const totalPill = document.createElement('span');
@@ -336,7 +337,7 @@
                 header.appendChild(headerRight);
                 deckItem.appendChild(header);
 
-                if (isTopLevel) {
+                if (isTopLevelInSection) {
                     const progressContainer = document.createElement('div');
                     progressContainer.className = 'bg-gray-700 rounded-full h-2 mx-4 mb-2';
                     progressContainer.innerHTML = `<div class="progress-bar-fill bg-gradient-to-r from-emerald-500 to-cyan-500 h-2 rounded-full" style="width: 0%"></div>`;
@@ -403,7 +404,6 @@
             if (firstTab && firstContent) {
                 firstTab.classList.add('active');
                 firstContent.classList.remove('hidden');
-                firstContent.classList.add('visible');
             }
 
             // --- Tab & Accordion Event Listeners ---
@@ -413,20 +413,15 @@
                 // Tab switching logic
                 const tabButton = target.closest('[role="tab"]');
                 if (tabButton) {
-                    // Deactivate all tabs and content
                     document.querySelectorAll('[role="tab"]').forEach(btn => btn.classList.remove('active'));
                     document.querySelectorAll('[role="tabpanel"]').forEach(panel => panel.classList.add('hidden'));
 
-                    // Activate clicked tab and its content
                     tabButton.classList.add('active');
                     const targetId = tabButton.dataset.target;
                     const activeContent = document.getElementById(targetId);
                     if (activeContent) {
                         activeContent.classList.remove('hidden');
-                        // Reset accordion heights when switching tabs to avoid overflow
-                        activeContent.querySelectorAll('.accordion-content').forEach(content => {
-                            content.style.maxHeight = null;
-                        });
+                        activeContent.querySelectorAll('.accordion-content').forEach(content => { content.style.maxHeight = null; });
                         activeContent.querySelectorAll('svg').forEach(svg => svg.classList.remove('rotate-180'));
                     }
                 }
@@ -437,9 +432,12 @@
                 // Status Pill Logic
                 if (target.closest('.status-pill')) {
                     const pill = target.closest('.status-pill');
-                    const isDone = pill.classList.toggle('done');
-                    completionState[pill.dataset.id] = isDone;
+                    pill.classList.toggle('done');
+                    completionState[pill.dataset.id] = pill.classList.contains('done');
                     saveState();
+                    
+                    const itemToUpdate = deckItem.closest('.deck-item.border-gray-700');
+                    if (itemToUpdate) updateProgress(itemToUpdate);
                 } 
                 // Accordion Toggle Logic
                 else if (target.closest('.accordion-toggle')) {
@@ -449,11 +447,8 @@
                         content.style.maxHeight = isCurrentlyOpen ? null : content.scrollHeight + 'px';
                         
                         const chevron = deckItem.querySelector('svg:last-of-type');
-                        if(chevron) {
-                            chevron.classList.toggle('rotate-180', !isCurrentlyOpen);
-                        }
+                        if(chevron) chevron.classList.toggle('rotate-180', !isCurrentlyOpen);
 
-                        // Traverse up the DOM to re-adjust parent heights
                         let parentDeck = deckItem.parentElement.closest('.deck-item');
                         while (parentDeck) {
                             const parentContent = parentDeck.querySelector('.accordion-content');
@@ -464,24 +459,23 @@
                         }
                     }
                 }
-                
-                // Update progress for the top-level parent (which is now a sub-deck in the new structure)
-                const topLevelItem = deckItem.closest('.deck-item[data-toplevel="true"]');
-                if (topLevelItem) updateProgress(topLevelItem);
             });
             
-            function updateProgress(topLevelItem) {
-                if (!topLevelItem) return;
-                const progressBar = topLevelItem.querySelector('.progress-bar-fill');
-                const pills = topLevelItem.querySelectorAll('.status-pill');
-                const donePills = topLevelItem.querySelectorAll('.status-pill.done');
-                const percentage = pills.length > 0 ? (donePills.length / pills.length) * 100 : 0;
-                progressBar.style.width = `${percentage}%`;
+            function updateProgress(itemWithProgressBar) {
+                if (!itemWithProgressBar) return;
+                const progressBar = itemWithProgressBar.querySelector('.progress-bar-fill');
+                const pills = itemWithProgressBar.querySelectorAll('.status-pill');
+                const donePills = itemWithProgressBar.querySelectorAll('.status-pill.done');
+                
+                // If there are no pills, progress is 100%. Otherwise, calculate the percentage.
+                const percentage = pills.length > 0 ? (donePills.length / pills.length) * 100 : 100;
+                
+                if(progressBar) progressBar.style.width = `${percentage}%`;
             }
 
-            document.querySelectorAll('#tab-content-container .deck-item').forEach(item => {
-                item.dataset.toplevel = 'true';
-                updateProgress(item); // Initial progress calculation
+            // Initial progress calculation for all relevant sections
+            document.querySelectorAll('#tab-content-container .deck-item.border-gray-700').forEach(item => {
+                updateProgress(item);
             });
         });
     </script>

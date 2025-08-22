@@ -34,8 +34,8 @@
         }
         .deck-item { animation: fadeInSlideUp 0.5s ease-out forwards; opacity: 0; }
 
-        /* --- Checkmark Styles & Animations --- */
-        .status-pill-checkmark__circle, .main-checkmark__circle {
+        /* --- Checkmark Styles & Animations for Pills --- */
+        .status-pill-checkmark__circle {
             stroke-dasharray: 166; stroke-dashoffset: 166; stroke-width: 2; stroke-miterlimit: 10;
             stroke: #4ade80; fill: none;
             animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
@@ -46,27 +46,13 @@
             box-shadow: inset 0px 0px 0px #4ade80;
             animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
         }
-        .status-pill-checkmark__check, .main-checkmark__check {
+        .status-pill-checkmark__check {
             transform-origin: 50% 50%; stroke-dasharray: 48; stroke-dashoffset: 48;
             animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
         }
         .status-pill.done .status-pill-checkmark { display: block; }
         .status-pill.done .status-value { display: none; }
         
-        .main-checkmark-container {
-            width: 24px; height: 24px; cursor: pointer;
-            border: 2px solid #4b5563; border-radius: 6px;
-            transition: background-color 0.2s, border-color 0.2s;
-        }
-        .main-checkmark-container:hover { border-color: #6b7280; }
-        .main-checkmark { display: none; stroke: #fff; stroke-width: 3; }
-        
-        .deck-item.done > .accordion-toggle .main-checkmark-container {
-            background-color: #22c55e; border-color: #22c55e;
-        }
-        .deck-item.done > .accordion-toggle .main-checkmark { display: block; }
-        .deck-item.done > .accordion-toggle .deck-name { text-decoration: line-through; color: #6b7280; }
-
         @keyframes stroke { 100% { stroke-dashoffset: 0; } }
         @keyframes scale { 0%, 100% { transform: none; } 50% { transform: scale3d(1.1, 1.1, 1); } }
         @keyframes fill { 100% { box-shadow: inset 0px 0px 0px 30px #4ade80; } }
@@ -269,18 +255,12 @@
                 deckItem.className = 'deck-item bg-gray-800 rounded-lg shadow-lg transition-all duration-300';
                 deckItem.dataset.id = currentPath;
                 if (isTopLevel) deckItem.classList.add('border', 'border-gray-700');
-                if (completionState[currentPath]) deckItem.classList.add('done');
 
                 const header = document.createElement('div');
                 header.className = 'flex items-center justify-between p-4 cursor-pointer hover:bg-gray-700/50 rounded-t-lg accordion-toggle';
 
                 const headerLeft = document.createElement('div');
                 headerLeft.className = 'flex items-center space-x-3';
-                
-                // Main checkmark for the entire deck/sub-deck
-                const mainCheckmarkContainer = document.createElement('div');
-                mainCheckmarkContainer.className = 'main-checkmark-container flex-shrink-0 flex items-center justify-center';
-                mainCheckmarkContainer.innerHTML = `<svg class="main-checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z"/></svg>`;
                 
                 const deckName = document.createElement('span');
                 deckName.className = `deck-name font-semibold transition-colors ${isTopLevel ? 'text-xl text-emerald-400' : 'text-gray-300'}`;
@@ -290,7 +270,6 @@
                 totalPill.className = 'text-xs font-medium px-2.5 py-1 rounded-full bg-gray-700 text-gray-300';
                 totalPill.textContent = `Total: ${deck.total}`;
                 
-                headerLeft.appendChild(mainCheckmarkContainer);
                 headerLeft.appendChild(deckName);
                 if (deck.total > 0) headerLeft.appendChild(totalPill);
 
@@ -362,19 +341,9 @@
                 const target = e.target;
                 const deckItem = target.closest('.deck-item');
                 if (!deckItem) return;
-
-                // Main Checkmark Logic
-                if (target.closest('.main-checkmark-container')) {
-                    const isDone = deckItem.classList.toggle('done');
-                    const allDescendants = deckItem.querySelectorAll('.deck-item, .status-pill');
-                    allDescendants.forEach(el => {
-                        el.classList.toggle('done', isDone);
-                        completionState[el.dataset.id] = isDone;
-                    });
-                    saveState();
-                } 
+ 
                 // Status Pill Logic
-                else if (target.closest('.status-pill')) {
+                if (target.closest('.status-pill')) {
                     const pill = target.closest('.status-pill');
                     const isDone = pill.classList.toggle('done');
                     completionState[pill.dataset.id] = isDone;

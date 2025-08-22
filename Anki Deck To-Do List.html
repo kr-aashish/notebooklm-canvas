@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anki Deck To-Do List</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Tailwind gray-900 */
+        }
+
+        /* --- Custom Scrollbar --- */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+        /* --- Accordion Animations --- */
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        /* --- Entry Animation --- */
+        @keyframes fadeInSlideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .deck-item { animation: fadeInSlideUp 0.5s ease-out forwards; opacity: 0; }
+
+        /* --- Checkmark Styles & Animations --- */
+        .status-pill-checkmark__circle, .main-checkmark__circle {
+            stroke-dasharray: 166; stroke-dashoffset: 166; stroke-width: 2; stroke-miterlimit: 10;
+            stroke: #4ade80; fill: none;
+            animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+        }
+        .status-pill-checkmark {
+            width: 24px; height: 24px; border-radius: 50%; display: none;
+            stroke-width: 2; stroke: #fff; stroke-miterlimit: 10;
+            box-shadow: inset 0px 0px 0px #4ade80;
+            animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
+        }
+        .status-pill-checkmark__check, .main-checkmark__check {
+            transform-origin: 50% 50%; stroke-dasharray: 48; stroke-dashoffset: 48;
+            animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+        }
+        .status-pill.done .status-pill-checkmark { display: block; }
+        .status-pill.done .status-value { display: none; }
+        
+        .main-checkmark-container {
+            width: 24px; height: 24px; cursor: pointer;
+            border: 2px solid #4b5563; border-radius: 6px;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .main-checkmark-container:hover { border-color: #6b7280; }
+        .main-checkmark { display: none; stroke: #fff; stroke-width: 3; }
+        
+        .deck-item.done > .accordion-toggle .main-checkmark-container {
+            background-color: #22c55e; border-color: #22c55e;
+        }
+        .deck-item.done > .accordion-toggle .main-checkmark { display: block; }
+        .deck-item.done > .accordion-toggle .deck-name { text-decoration: line-through; color: #6b7280; }
+
+        @keyframes stroke { 100% { stroke-dashoffset: 0; } }
+        @keyframes scale { 0%, 100% { transform: none; } 50% { transform: scale3d(1.1, 1.1, 1); } }
+        @keyframes fill { 100% { box-shadow: inset 0px 0px 0px 30px #4ade80; } }
+        
+        /* --- Progress Bar --- */
+        .progress-bar-fill { transition: width 0.5s ease-in-out; }
+    </style>
+</head>
+<body class="text-gray-200 antialiased">
+
+    <div class="container mx-auto max-w-4xl p-4 sm:p-6 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl sm:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400 pb-2">
+                Anki Study Dashboard
+            </h1>
+            <p class="text-gray-400 mt-2 text-lg">Your personalized deck-by-deck study plan.</p>
+        </header>
+
+        <main id="deck-container" class="space-y-3">
+            <!-- Decks will be dynamically inserted here -->
+        </main>
+        
+        <footer class="text-center mt-12 text-gray-500 text-sm">
+            <p>Happy studying!</p>
+        </footer>
+    </div>
+
+    <script>
+        // Data from the provided table
+        const deckData = [
+            {
+                name: "1) Dynamic programming", new: 8, learning: 0, review: 15, total: 23,
+                children: [
+                    { name: "0) Brute force", new: 0, learning: 0, review: 0, total: 0, children: [
+                        { name: "AlgoExpert", new: 0, learning: 0, review: 0, total: 0 },
+                        { name: "Brute", new: 0, learning: 0, review: 0, total: 0 },
+                        { name: "MMM", new: 0, learning: 0, review: 0, total: 0 },
+                    ]},
+                    { name: "0) Points", new: 0, learning: 0, review: 0, total: 0 },
+                    { name: "1) dp forms", new: 0, learning: 0, review: 0, total: 0, children: [
+                        { name: "Basic", new: 0, learning: 0, review: 0, total: 0 },
+                        { name: "Form 1 (Knapsack)", new: 0, learning: 0, review: 0, total: 0 },
+                        { name: "Form 2 (Ending form)", new: 0, learning: 0, review: 0, total: 0 },
+                        { name: "Form 3", new: 0, learning: 0, review: 0, total: 0 },
+                        { name: "Form 4", new: 0, learning: 0, review: 0, total: 0 },
+                        { name: "Form 5", new: 0, learning: 0, review: 0, total: 0 },
+                    ]},
+                    { name: "2) Grid Based Qs", new: 0, learning: 0, review: 0, total: 0 },
+                    { name: "3) dp mixed", new: 0, learning: 0, review: 0, total: 0, children: [
+                        { name: "Extending", new: 0, learning: 0, review: 0, total: 0 },
+                        { name: "Gen", new: 0, learning: 0, review: 0, total: 0 },
+                    ]},
+                    { name: "4) dp optimisation", new: 2, learning: 0, review: 12, total: 14, children: [
+                        { name: "Iterative", new: 2, learning: 0, review: 1, total: 3 },
+                        { name: "Problems", new: 0, learning: 0, review: 11, total: 11 },
+                    ]},
+                    { name: "5) dp adv", new: 0, learning: 0, review: 1, total: 1, children: [
+                        { name: "Bitmask", new: 0, learning: 0, review: 1, total: 1 },
+                    ]},
+                    { name: "FAQs", new: 6, learning: 0, review: 2, total: 8 },
+                ]
+            },
+            {
+                name: "2) Graph", new: 12, learning: 0, review: 98, total: 110,
+                children: [
+                    { name: "1.1 Basics", new: 0, learning: 0, review: 2, total: 2, children: [
+                        { name: "3 Traversals", new: 0, learning: 0, review: 2, total: 2 },
+                    ]},
+                    { name: "1.2 Basic problems", new: 0, learning: 0, review: 11, total: 11, children: [
+                        { name: "2 Connected Components", new: 0, learning: 0, review: 3, total: 3 },
+                        { name: "3 finding Cycle", new: 0, learning: 0, review: 8, total: 8 },
+                    ]},
+                    { name: "2 Shortest Path", new: 1, learning: 0, review: 85, total: 86, children: [
+                        { name: "0 Misc Points!", new: 0, learning: 0, review: 6, total: 6 },
+                        { name: "1 BFS", new: 1, learning: 0, review: 14, total: 15 },
+                        { name: "2) 0-1 BFS", new: 0, learning: 0, review: 19, total: 19 },
+                        { name: "3 Dikstra", new: 0, learning: 0, review: 23, total: 23 },
+                        { name: "4 Bellmen Ford", new: 0, learning: 0, review: 7, total: 7 },
+                        { name: "5 Floyd Warshall", new: 0, learning: 0, review: 16, total: 16 },
+                    ]},
+                    { name: "3) Union Find & MST", new: 10, learning: 0, review: 0, total: 10, children: [
+                        { name: "Misc Problems", new: 10, learning: 0, review: 0, total: 10 },
+                    ]},
+                    { name: "4) Trees", new: 1, learning: 0, review: 0, total: 1 },
+                ]
+            },
+            {
+                name: "3) IB", new: 17, learning: 11, review: 85, total: 113,
+                children: [
+                    { name: "1) LL", new: 0, learning: 0, review: 27, total: 27, children: [
+                        { name: "Fundamentals!", new: 0, learning: 0, review: 9, total: 9 },
+                        { name: "Problems", new: 0, learning: 0, review: 18, total: 18 },
+                    ]},
+                     { name: "2) BT/BST/BBST", new: 5, learning: 1, review: 51, total: 57, children: [
+                        { name: "1 Terminologies", new: 0, learning: 0, review: 6, total: 6 },
+                        { name: "2 Traversals", new: 0, learning: 0, review: 10, total: 10 },
+                        { name: "3 Recover Tree", new: 0, learning: 1, review: 5, total: 6 },
+                        { name: "4 Expression Tree", new: 0, learning: 0, review: 6, total: 6 },
+                        { name: "5 Qs", new: 5, learning: 0, review: 24, total: 29 },
+                    ]},
+                    { name: "3) AD", new: 6, learning: 10, review: 7, total: 23, children: [
+                        { name: "DS Imple", new: 6, learning: 0, review: 0, total: 6 },
+                    ]},
+                    { name: "4) FAQs", new: 0, learning: 17, review: 95, total: 112, children: [
+                        { name: "1) Mixed", new: 0, learning: 0, review: 31, total: 31 },
+                        { name: "2) FAQs", new: 0, learning: 17, review: 64, total: 81 },
+                    ]},
+                ]
+            },
+            {
+                name: "5) Misc", new: 16, learning: 0, review: 414, total: 430,
+                children: [
+                    { name: "1) DS", new: 12, learning: 0, review: 28, total: 40, children: [
+                        { name: "1) String", new: 0, learning: 0, review: 27, total: 27, children: [
+                            { name: "0) Manipulation", new: 0, learning: 0, review: 6, total: 6 },
+                            { name: "1) Algos", new: 0, learning: 0, review: 12, total: 12 },
+                            { name: "3) Hashing", new: 0, learning: 0, review: 9, total: 9 },
+                        ]},
+                        { name: "2) Trie", new: 12, learning: 0, review: 1, total: 13, children: [
+                            { name: "Bit Tries", new: 2, learning: 0, review: 1, total: 3 },
+                            { name: "String Tries", new: 10, learning: 0, review: 0, total: 10 },
+                        ]},
+                    ]},
+                    { name: "2) adv DS", new: 3, learning: 0, review: 26, total: 29, children: [
+                        { name: "1) Seg tree", new: 0, learning: 0, review: 13, total: 13 },
+                        { name: "2) BL", new: 3, learning: 0, review: 13, total: 16, children: [
+                             { name: "Basics", new: 0, learning: 0, review: 9, total: 9 },
+                             { name: "LCA", new: 3, learning: 0, review: 4, total: 7 },
+                        ]},
+                    ]},
+                    { name: "3) Fundamentals", new: 1, learning: 0, review: 360, total: 361, children: [
+                        { name: "0) Debugging repoo", new: 0, learning: 0, review: 53, total: 53, children: [
+                            { name: "RTE", new: 0, learning: 0, review: 15, total: 15 },
+                            { name: "TLE", new: 0, learning: 0, review: 5, total: 5 },
+                            { name: "WA", new: 0, learning: 0, review: 33, total: 33 },
+                        ]},
+                        { name: "1) STL", new: 0, learning: 0, review: 109, total: 109, children: [
+                            { name: "AlgoExpert", new: 0, learning: 0, review: 23, total: 23, children: [
+                                { name: "1) Arrays", new: 0, learning: 0, review: 17, total: 17 },
+                                { name: "2) Strings", new: 0, learning: 0, review: 4, total: 4 },
+                                { name: "3) Stacks", new: 0, learning: 0, review: 1, total: 1 },
+                                { name: "Misc", new: 0, learning: 0, review: 1, total: 1 },
+                            ]},
+                            { name: "AZ", new: 0, learning: 0, review: 86, total: 86, children: [
+                                { name: "Problems", new: 0, learning: 0, review: 47, total: 47 },
+                                { name: "Syntax", new: 0, learning: 0, review: 35, total: 35 },
+                                { name: "Templates", new: 0, learning: 0, review: 4, total: 4 },
+                            ]},
+                        ]},
+                        { name: "2) BS/TP", new: 0, learning: 0, review: 36, total: 36, children: [
+                            { name: "BS", new: 0, learning: 0, review: 19, total: 19 },
+                            { name: "TP", new: 0, learning: 0, review: 17, total: 17 },
+                        ]},
+                        { name: "3) Maths", new: 1, learning: 0, review: 58, total: 59, children: [
+                            { name: "Combinatronics", new: 1, learning: 0, review: 16, total: 17 },
+                            { name: "Misc", new: 0, learning: 0, review: 16, total: 16 },
+                            { name: "Number Theory", new: 0, learning: 0, review: 16, total: 16 },
+                            { name: "Sieve", new: 0, learning: 0, review: 10, total: 10 },
+                        ]},
+                        { name: "4) Tools", new: 0, learning: 0, review: 45, total: 45, children: [
+                            { name: "Bits", new: 0, learning: 0, review: 25, total: 25 },
+                            { name: "PS", new: 0, learning: 0, review: 11, total: 11 },
+                            { name: "Sortings", new: 0, learning: 0, review: 9, total: 9 },
+                        ]},
+                        { name: "5) Greedy & Misc", new: 0, learning: 0, review: 59, total: 59, children: [
+                            { name: "Greedy", new: 0, learning: 0, review: 36, total: 36, children: [
+                                { name: "0) Gen", new: 0, learning: 0, review: 7, total: 7 },
+                                { name: "1) Greedy nd Sorting", new: 0, learning: 0, review: 6, total: 6 },
+                                { name: "2) Iterating", new: 0, learning: 0, review: 10, total: 10 },
+                                { name: "3) Median and Mean", new: 0, learning: 0, review: 2, total: 2 },
+                                { name: "4) Highest freq", new: 0, learning: 0, review: 2, total: 2 },
+                                { name: "5) Intervals & Acitvity Selection", new: 0, learning: 0, review: 3, total: 3 },
+                                { name: "AlgoExpert", new: 0, learning: 0, review: 5, total: 5 },
+                            ]},
+                            { name: "Misc", new: 0, learning: 0, review: 23, total: 23, children: [
+                                { name: "1) php", new: 0, learning: 0, review: 2, total: 2 },
+                                { name: "2) Sweep line", new: 0, learning: 0, review: 9, total: 9 },
+                                { name: "3) Stocks", new: 0, learning: 0, review: 4, total: 4 },
+                                { name: "Oth", new: 0, learning: 0, review: 8, total: 8 },
+                            ]},
+                        ]},
+                    ]},
+                ]
+            },
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('deck-container');
+            let completionState = JSON.parse(localStorage.getItem('ankiCompletionState')) || {};
+
+            function saveState() {
+                localStorage.setItem('ankiCompletionState', JSON.stringify(completionState));
+            }
+
+            function createDeckHTML(deck, level = 0, parentPath = '') {
+                const isTopLevel = level === 0;
+                const currentPath = parentPath ? `${parentPath}>${deck.name}` : deck.name;
+                
+                const deckItem = document.createElement('div');
+                deckItem.className = 'deck-item bg-gray-800 rounded-lg shadow-lg transition-all duration-300';
+                deckItem.dataset.id = currentPath;
+                if (isTopLevel) deckItem.classList.add('border', 'border-gray-700');
+                if (completionState[currentPath]) deckItem.classList.add('done');
+
+                const header = document.createElement('div');
+                header.className = 'flex items-center justify-between p-4 cursor-pointer hover:bg-gray-700/50 rounded-t-lg accordion-toggle';
+
+                const headerLeft = document.createElement('div');
+                headerLeft.className = 'flex items-center space-x-3';
+                
+                // Main checkmark for the entire deck/sub-deck
+                const mainCheckmarkContainer = document.createElement('div');
+                mainCheckmarkContainer.className = 'main-checkmark-container flex-shrink-0 flex items-center justify-center';
+                mainCheckmarkContainer.innerHTML = `<svg class="main-checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z"/></svg>`;
+                
+                const deckName = document.createElement('span');
+                deckName.className = `deck-name font-semibold transition-colors ${isTopLevel ? 'text-xl text-emerald-400' : 'text-gray-300'}`;
+                deckName.textContent = deck.name;
+                
+                const totalPill = document.createElement('span');
+                totalPill.className = 'text-xs font-medium px-2.5 py-1 rounded-full bg-gray-700 text-gray-300';
+                totalPill.textContent = `Total: ${deck.total}`;
+                
+                headerLeft.appendChild(mainCheckmarkContainer);
+                headerLeft.appendChild(deckName);
+                if (deck.total > 0) headerLeft.appendChild(totalPill);
+
+                const headerRight = document.createElement('div');
+                headerRight.className = 'flex items-center space-x-2 sm:space-x-3';
+
+                const createStatusPill = (label, value, colorClass, type) => {
+                    if (value === 0) return null;
+                    const pillId = `${currentPath}_${type}`;
+                    const pill = document.createElement('div');
+                    pill.className = `status-pill flex items-center justify-center w-20 h-8 rounded-full text-sm font-semibold cursor-pointer transition-all duration-300 ease-in-out ${colorClass}`;
+                    pill.dataset.id = pillId;
+                    if (completionState[pillId]) pill.classList.add('done');
+                    pill.innerHTML = `
+                        <span class="status-label hidden sm:inline mr-2">${label}</span>
+                        <span class="status-value">${value}</span>
+                        <svg class="status-pill-checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                            <circle class="status-pill-checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+                            <path class="status-pill-checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                        </svg>
+                    `;
+                    return pill;
+                };
+
+                const newPill = createStatusPill('New', deck.new, 'bg-sky-500 hover:bg-sky-600', 'new');
+                const learningPill = createStatusPill('Learn', deck.learning, 'bg-amber-500 hover:bg-amber-600', 'learning');
+                const reviewPill = createStatusPill('Review', deck.review, 'bg-emerald-500 hover:bg-emerald-600', 'review');
+
+                if (newPill) headerRight.appendChild(newPill);
+                if (learningPill) headerRight.appendChild(learningPill);
+                if (reviewPill) headerRight.appendChild(reviewPill);
+
+                if (deck.children && deck.children.length > 0) {
+                    const chevron = document.createElement('div');
+                    chevron.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>`;
+                    headerRight.appendChild(chevron);
+                }
+
+                header.appendChild(headerLeft);
+                header.appendChild(headerRight);
+                deckItem.appendChild(header);
+
+                if (isTopLevel) {
+                    const progressContainer = document.createElement('div');
+                    progressContainer.className = 'bg-gray-700 rounded-full h-2 mx-4 mb-2';
+                    progressContainer.innerHTML = `<div class="progress-bar-fill bg-gradient-to-r from-emerald-500 to-cyan-500 h-2 rounded-full" style="width: 0%"></div>`;
+                    deckItem.appendChild(progressContainer);
+                }
+
+                if (deck.children && deck.children.length > 0) {
+                    const content = document.createElement('div');
+                    content.className = 'accordion-content';
+                    const contentWrapper = document.createElement('div');
+                    contentWrapper.className = 'p-4 pt-0 space-y-2';
+                    contentWrapper.style.paddingLeft = `${(level + 1) * 1.5}rem`;
+                    deck.children.forEach(child => {
+                        contentWrapper.appendChild(createDeckHTML(child, level + 1, currentPath));
+                    });
+                    content.appendChild(contentWrapper);
+                    deckItem.appendChild(content);
+                }
+                return deckItem;
+            }
+
+            deckData.forEach(deck => container.appendChild(createDeckHTML(deck)));
+            
+            // --- Event Listeners ---
+            container.addEventListener('click', function(e) {
+                const target = e.target;
+                const deckItem = target.closest('.deck-item');
+                if (!deckItem) return;
+
+                // Main Checkmark Logic
+                if (target.closest('.main-checkmark-container')) {
+                    const isDone = deckItem.classList.toggle('done');
+                    const allDescendants = deckItem.querySelectorAll('.deck-item, .status-pill');
+                    allDescendants.forEach(el => {
+                        el.classList.toggle('done', isDone);
+                        completionState[el.dataset.id] = isDone;
+                    });
+                    saveState();
+                } 
+                // Status Pill Logic
+                else if (target.closest('.status-pill')) {
+                    const pill = target.closest('.status-pill');
+                    const isDone = pill.classList.toggle('done');
+                    completionState[pill.dataset.id] = isDone;
+                    saveState();
+                } 
+                // Accordion Toggle Logic
+                else if (target.closest('.accordion-toggle')) {
+                    const content = deckItem.querySelector('.accordion-content');
+                    if (content) {
+                        const chevron = deckItem.querySelector('svg:last-of-type');
+                        if(chevron) chevron.classList.toggle('rotate-180');
+                        content.style.maxHeight = content.style.maxHeight ? null : content.scrollHeight + "px";
+                    }
+                }
+                
+                // Update progress for the top-level parent
+                const topLevelItem = deckItem.closest('.deck-item[data-toplevel="true"]');
+                if (topLevelItem) updateProgress(topLevelItem);
+            });
+            
+            function updateProgress(topLevelItem) {
+                if (!topLevelItem) return;
+                const progressBar = topLevelItem.querySelector('.progress-bar-fill');
+                const pills = topLevelItem.querySelectorAll('.status-pill');
+                const donePills = topLevelItem.querySelectorAll('.status-pill.done');
+                const percentage = pills.length > 0 ? (donePills.length / pills.length) * 100 : 0;
+                progressBar.style.width = `${percentage}%`;
+            }
+
+            document.querySelectorAll('#deck-container > .deck-item').forEach(item => {
+                item.dataset.toplevel = 'true';
+                updateProgress(item); // Initial progress calculation
+            });
+        });
+    </script>
+</body>
+</html>

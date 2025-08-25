@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animated CI/CD Sequence Diagram</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Keyframes for animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes drawLine {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Establish proper stacking context for lifelines */
+        .lifelines-container {
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Base animation classes */
+        .lifeline {
+            position: relative;
+            z-index: 20;
+            opacity: 0;
+            animation: popIn 0.6s ease-out forwards;
+            /* Preserve the element's rendering during animations */
+            transform-style: preserve-3d;
+            backface-visibility: hidden;
+        }
+
+        /* Ensure icons stay visible */
+        .lifeline-icon {
+            position: relative;
+            z-index: 30;
+            transform: translateZ(0);
+            will-change: transform;
+        }
+
+        /* Ensure vertical lines stay visible */
+        .lifeline-vertical {
+            position: relative;
+            z-index: 15;
+            transform: translateZ(0);
+        }
+        
+        .message-group {
+            position: relative;
+            z-index: 5;
+            opacity: 0;
+            animation: fadeIn 0.5s ease-out forwards;
+            animation-fill-mode: forwards;
+        }
+
+        /* Staggered animation delays */
+        .lifeline:nth-child(1) { animation-delay: 0.1s; }
+        .lifeline:nth-child(2) { animation-delay: 0.2s; }
+        .lifeline:nth-child(3) { animation-delay: 0.3s; }
+        .lifeline:nth-child(4) { animation-delay: 0.4s; }
+        .lifeline:nth-child(5) { animation-delay: 0.5s; }
+        .lifeline:nth-child(6) { animation-delay: 0.6s; }
+
+        .message-group:nth-child(1) { animation-delay: 1.0s; }
+        .message-group:nth-child(2) { animation-delay: 2.0s; }
+        .message-group:nth-child(3) { animation-delay: 3.5s; }
+        .message-group:nth-child(4) { animation-delay: 5.0s; }
+        .message-group:nth-child(5) { animation-delay: 6.5s; }
+        .message-group:nth-child(6) { animation-delay: 8.0s; }
+        .message-group:nth-child(7) { animation-delay: 9.5s; }
+        .message-group:nth-child(8) { animation-delay: 11.0s; }
+        .message-group:nth-child(9) { animation-delay: 12.5s; }
+        .message-group:nth-child(10) { animation-delay: 14.0s; }
+
+        .arrow-line {
+            position: relative;
+            height: 2px;
+            background-color: currentColor;
+            animation: drawLine 0.8s ease-out forwards;
+            transform-origin: left;
+            will-change: width;
+            z-index: 1;
+        }
+
+        .arrow-head {
+            position: absolute;
+            right: -1px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-top: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+            z-index: 2;
+        }
+        .arrow-head-right {
+             border-left: 8px solid currentColor;
+        }
+        .arrow-head-left {
+             border-right: 8px solid currentColor;
+             left: -1px;
+             right: auto;
+        }
+        .dashed-line {
+            background-image: linear-gradient(to right, currentColor 50%, transparent 50%);
+            background-size: 12px 2px;
+            background-repeat: repeat-x;
+            background-color: transparent;
+        }
+
+        /* Force hardware acceleration for smoother animations */
+        #diagram-container {
+            transform: translateZ(0);
+            will-change: transform;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white p-4 sm:p-6 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="text-center mb-12">
+            <h1 class="text-3xl sm:text-4xl font-bold text-cyan-400 tracking-tight">CI/CD Pipeline with Slack Approval</h1>
+            <p class="mt-3 text-lg text-gray-400 max-w-3xl mx-auto">An animated sequence diagram illustrating the automated deployment workflow with a manual approval gate.</p>
+        </header>
+
+        <main class="bg-gray-800 rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 overflow-x-auto">
+            <div id="diagram-container" class="relative min-w-[1000px] pb-10">
+                <!-- Lifelines Container with higher z-index -->
+                <div class="lifelines-container flex justify-around text-center text-sm font-semibold">
+                    <div class="lifeline w-28 flex flex-col items-center">
+                        <div class="lifeline-icon bg-indigo-500 rounded-lg p-3 mb-2 shadow-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                        </div>
+                        <span class="relative z-20">Developer</span>
+                        <div class="lifeline-vertical w-0.5 bg-gray-600 h-[700px] mt-2"></div>
+                    </div>
+                    <div class="lifeline w-28 flex flex-col items-center">
+                        <div class="lifeline-icon bg-gray-600 rounded-lg p-3 mb-2 shadow-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
+                        </div>
+                        <span class="relative z-20">GitHub</span>
+                        <div class="lifeline-vertical w-0.5 bg-gray-600 h-[700px] mt-2"></div>
+                    </div>
+                    <div class="lifeline w-28 flex flex-col items-center">
+                        <div class="lifeline-icon bg-blue-500 rounded-lg p-3 mb-2 shadow-lg">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        </div>
+                        <span class="relative z-20">GitHub Actions</span>
+                        <div class="lifeline-vertical w-0.5 bg-gray-600 h-[700px] mt-2"></div>
+                    </div>
+                    <div class="lifeline w-28 flex flex-col items-center">
+                        <div class="lifeline-icon bg-green-500 rounded-lg p-3 mb-2 shadow-lg">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="currentColor" viewBox="0 0 24 24"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.523-2.523c0-1.394 1.129-2.523 2.523-2.523s2.523 1.129 2.523 2.523a2.528 2.528 0 0 1-2.523 2.523zm1.261-6.046a2.528 2.528 0 0 1-2.523-2.523c0-1.394 1.129-2.523 2.523-2.523s2.523 1.129 2.523 2.523a2.528 2.528 0 0 1-2.523 2.523zm-1.261 7.307a2.528 2.528 0 0 1 2.523 2.523c0 1.394-1.129 2.523-2.523 2.523s-2.523-1.129-2.523-2.523a2.528 2.528 0 0 1 2.523-2.523zm12.615-1.261a2.528 2.528 0 0 1 2.523 2.523c0 1.394-1.129 2.523-2.523 2.523s-2.523-1.129-2.523-2.523a2.528 2.528 0 0 1 2.523-2.523zm-1.261 6.046a2.528 2.528 0 0 1 2.523 2.523c0 1.394-1.129 2.523-2.523 2.523s-2.523-1.129-2.523-2.523a2.528 2.528 0 0 1 2.523-2.523zm1.261-7.307a2.528 2.528 0 0 1-2.523-2.523c0-1.394 1.129-2.523 2.523-2.523s2.523 1.129 2.523 2.523a2.528 2.528 0 0 1-2.523 2.523zm-12.615 1.261a2.528 2.528 0 0 1-2.523-2.523c0-1.394 1.129-2.523 2.523-2.523s2.523 1.129 2.523 2.523a2.528 2.528 0 0 1-2.523 2.523zm1.261-6.046a2.528 2.528 0 0 1-2.523-2.523c0-1.394 1.129-2.523 2.523-2.523s2.523 1.129 2.523 2.523a2.528 2.528 0 0 1-2.523 2.523z"/></svg>
+                        </div>
+                        <span class="relative z-20">Slack</span>
+                        <div class="lifeline-vertical w-0.5 bg-gray-600 h-[700px] mt-2"></div>
+                    </div>
+                    <div class="lifeline w-28 flex flex-col items-center">
+                        <div class="lifeline-icon bg-yellow-500 rounded-lg p-3 mb-2 shadow-lg">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        </div>
+                        <span class="relative z-20">Approver</span>
+                        <div class="lifeline-vertical w-0.5 bg-gray-600 h-[700px] mt-2"></div>
+                    </div>
+                    <div class="lifeline w-28 flex flex-col items-center">
+                        <div class="lifeline-icon bg-orange-500 rounded-lg p-3 mb-2 shadow-lg">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                        </div>
+                        <span class="relative z-20">AWS</span>
+                        <div class="lifeline-vertical w-0.5 bg-gray-600 h-[700px] mt-2"></div>
+                    </div>
+                </div>
+
+                <!-- Messages - Lower z-index than lifelines -->
+                <div class="absolute top-32 left-0 right-0 space-y-12">
+                    <!-- 1. Push code -->
+                    <div class="message-group absolute w-full" style="top: 0px;">
+                        <div class="absolute text-cyan-400" style="left: 8.33%; width: 16.67%;">
+                            <div class="text-sm font-medium mb-1 text-center">1. git push</div>
+                            <div class="arrow-line"><div class="arrow-head arrow-head-right"></div></div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Trigger CI Workflow -->
+                    <div class="message-group absolute w-full" style="top: 60px;">
+                        <div class="absolute text-blue-400" style="left: 25%; width: 16.67%;">
+                            <div class="text-sm font-medium mb-1 text-center">2. Triggers CI Workflow</div>
+                            <div class="arrow-line"><div class="arrow-head arrow-head-right"></div></div>
+                        </div>
+                        <div class="absolute top-10 text-xs text-gray-400 w-40 text-center" style="left: 33.33%; transform: translateX(-50%);">
+                            (Build, Test, Package, Upload Artifact)
+                        </div>
+                    </div>
+                    
+                    <!-- 3. Send Approval Request -->
+                    <div class="message-group absolute w-full" style="top: 150px;">
+                        <div class="absolute text-green-400" style="left: 41.67%; width: 16.67%;">
+                            <div class="text-sm font-medium mb-1 text-center">3. Send Approval Request</div>
+                            <div class="arrow-line"><div class="arrow-head arrow-head-right"></div></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 4. Notify Approver -->
+                    <div class="message-group absolute w-full" style="top: 210px;">
+                        <div class="absolute text-yellow-400" style="left: 58.33%; width: 16.67%;">
+                            <div class="text-sm font-medium mb-1 text-center">4. Notification</div>
+                            <div class="arrow-line dashed-line"><div class="arrow-head arrow-head-right"></div></div>
+                        </div>
+                    </div>
+
+                    <!-- 5. Approve Deployment -->
+                    <div class="message-group absolute w-full" style="top: 270px;">
+                        <div class="absolute text-yellow-400" style="left: 58.33%; width: 16.67%;">
+                            <div class="text-sm font-medium mb-1 text-center">5. Clicks "Approve"</div>
+                             <div class="arrow-line arrow-head-left" style="transform: rotate(180deg);"><div class="arrow-head arrow-head-right"></div></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 6. Send Webhook to API Gateway -->
+                    <div class="message-group absolute w-full" style="top: 330px;">
+                        <div class="absolute text-orange-400" style="left: 75%; width: 16.67%;">
+                            <div class="text-sm font-medium mb-1 text-center">6. POST to API Gateway</div>
+                            <div class="arrow-line"><div class="arrow-head arrow-head-right"></div></div>
+                        </div>
+                         <div class="absolute left-[87.5%] top-[-10px] text-xs text-gray-400 w-40 text-center">
+                            (Verifies Slack Signature)
+                        </div>
+                    </div>
+
+                    <!-- 7. Trigger Lambda -->
+                    <div class="message-group absolute w-full" style="top: 390px;">
+                         <div class="absolute left-[91.67%] top-[-10px] text-xs text-gray-400 w-40 text-center" style="transform: translateX(-50%);">
+                            7. Invokes Lambda Handler
+                        </div>
+                    </div>
+                    
+                    <!-- 8. Trigger CD Workflow -->
+                    <div class="message-group absolute w-full" style="top: 450px;">
+                        <div class="absolute text-blue-400" style="left: 42.17%; width: 49%;">
+                            <div class="text-sm font-medium mb-1 text-center">8. Triggers CD Workflow via API</div>
+                            <div class="arrow-line arrow-head-left" style="transform: rotate(180deg);"><div class="arrow-head arrow-head-right"></div></div>
+                        </div>
+                         <div class="absolute left-[62.5%] top-8 text-xs text-gray-400 w-40 text-center">
+                            (workflow_dispatch)
+                        </div>
+                    </div>
+
+                    <!-- 9. Deploy to Lambda -->
+                    <div class="message-group absolute w-full" style="top: 530px;">
+                        <div class="absolute text-orange-400" style="left: 41.67%; width: 50%;">
+                            <div class="text-sm font-medium mb-1 text-center">9. Deploy to AWS Lambda</div>
+                            <div class="arrow-line"><div class="arrow-head arrow-head-right"></div></div>
+                        </div>
+                        <div class="absolute left-[37.5%] top-10 text-xs text-gray-400 w-40 text-center">
+                            (Downloads Artifact, Deploys Code)
+                        </div>
+                    </div>
+
+                    <!-- 10. Success Notification -->
+                    <div class="message-group absolute w-full" style="top: 610px;">
+                        <div class="absolute text-green-400" style="left: 58.33%; width: 16.67%;">
+                            <div class="text-sm font-medium mb-1 text-center">10. Deployment Success</div>
+                            <div class="arrow-line dashed-line arrow-head-left" style="transform: rotate(180deg);"><div class="arrow-head arrow-head-right"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer class="text-center mt-8 text-gray-500 text-sm">
+            <p>Diagram generated based on the provided CI/CD documentation.</p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Study Dashboard</title>
+    <link rel="icon" type="image/png" href="https://us1.discourse-cdn.com/flex002/uploads/anki2/original/2X/2/24bfef76259176f6f6e369b588d07f614d6d631c.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Tailwind gray-900 */
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        @keyframes fadeInSlideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .task-item { animation: fadeInSlideUp 0.5s ease-out forwards; opacity: 0; }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .tab-content:not(.hidden) { animation: fadeIn 0.5s ease-in-out; }
+        .tab-button { position: relative; }
+        .tab-button.active {
+            border-bottom-width: 2px;
+            border-color: #38bdf8; /* sky-400 */
+            color: #ffffff;
+            transition: all 0.3s ease-in-out;
+        }
+        .progress-bar-fill { transition: width 0.5s ease-in-out; }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] { -moz-appearance: textfield; }
+        .close-tab-btn {
+            opacity: 0.5;
+            transition: opacity 0.2s, color 0.2s;
+            padding-left: 0.5rem;
+        }
+        .tab-button:hover .close-tab-btn { opacity: 1; }
+        .close-tab-btn:hover { color: #ef4444; /* red-500 */ }
+    </style>
+</head>
+<body class="text-gray-200 antialiased">
+
+<div class="container mx-auto max-w-4xl p-4 sm:p-6 md:p-8">
+    <header class="text-center mb-8">
+        <h1 class="text-4xl sm:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400 pb-2">
+            Dynamic Study Dashboard
+        </h1>
+        <p class="text-gray-400 mt-2 text-lg">Your customizable study plan and progress tracker.</p>
+    </header>
+
+    <div role="tablist" class="flex flex-wrap items-center sm:space-x-2 mb-6 border-b border-gray-700">
+        </div>
+
+    <main id="tab-content-container" class="space-y-3">
+        </main>
+
+    <footer class="text-center mt-12 text-gray-500 text-sm">
+        <p>Happy studying!</p>
+    </footer>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- DATA & CONFIGURATION ---
+    const TASKS = [
+        { id: 'dp-flashcards', name: 'dp', dailyGoal: 6 },
+        { id: 'graph', name: 'graph', dailyGoal: 35 },
+        { id: 'jb', name: 'iB', dailyGoal: 25 },
+        { id: 'faqs', name: 'FAQs', dailyGoal: 6 },
+        { id: 'misc', name: 'Misc Cards', dailyGoal: 108 },
+        { id: 'anki-misc', name: 'AD + FAQs + Misc: With Anki', dailyGoal: 4 },
+        { id: 'lc-discuss', name: 'LC Discuss', dailyGoal: 10 },
+        { id: 'lc', name: 'LC Set', dailyGoal: 14 },
+    ];
+    const SESSION_TOTAL_GOAL = TASKS.reduce((sum, task) => sum + task.dailyGoal, 0);
+
+    let tabs = [];
+    let progressState = {};
+
+    const tabContainer = document.querySelector('[role="tablist"]');
+    const tabContentContainer = document.getElementById('tab-content-container');
+
+    // --- DATA PERSISTENCE ---
+    function loadAppData() {
+        const savedTabs = localStorage.getItem('studyDashboardTabs');
+        const savedProgress = localStorage.getItem('studyProgressState');
+
+        tabs = savedTabs ? JSON.parse(savedTabs) : [{ id: Date.now(), name: "Session 1" }];
+        progressState = savedProgress ? JSON.parse(savedProgress) : {};
+
+        // Ensure progress state exists for every tab and task
+        tabs.forEach(tab => {
+            if (!progressState[tab.id]) progressState[tab.id] = {};
+            TASKS.forEach(task => {
+                if (progressState[tab.id][task.id] === undefined) {
+                    progressState[tab.id][task.id] = 0;
+                }
+            });
+        });
+        
+        // Clean up progress data for tabs that no longer exist
+        const tabIds = new Set(tabs.map(t => String(t.id)));
+        for (const progressId in progressState) {
+            if (!tabIds.has(progressId)) {
+                delete progressState[progressId];
+            }
+        }
+    }
+
+    function saveAppData() {
+        localStorage.setItem('studyDashboardTabs', JSON.stringify(tabs));
+        localStorage.setItem('studyProgressState', JSON.stringify(progressState));
+    }
+    
+    // --- DYNAMIC RENDERING ---
+    function renderAll() {
+        saveAppData(); // Save state before re-rendering
+        tabContainer.innerHTML = '';
+        tabContentContainer.innerHTML = '';
+
+        if (tabs.length === 0) {
+             const placeholder = document.createElement('div');
+             placeholder.className = 'text-center text-gray-500 p-8';
+             placeholder.innerHTML = `<p>No sessions yet.</p><p>Click the '+' button to add your first session!</p>`;
+             tabContentContainer.appendChild(placeholder);
+        }
+
+        tabs.forEach(tab => {
+            renderTab(tab);
+            renderTabPanel(tab);
+        });
+
+        renderAddTabButton();
+        updateUI();
+
+        // Activate the first tab if none are active
+        if (tabs.length > 0 && !document.querySelector('.tab-button.active')) {
+            document.querySelector('.tab-button')?.click();
+        }
+    }
+    
+    function renderTab(tab) {
+        const tabButton = document.createElement('button');
+        tabButton.id = `tab-btn-${tab.id}`;
+        tabButton.setAttribute('role', 'tab');
+        tabButton.setAttribute('aria-controls', `tab-panel-${tab.id}`);
+        tabButton.dataset.tabId = tab.id;
+        tabButton.className = `tab-button px-4 py-3 text-sm md:text-base font-medium text-gray-400 hover:text-white rounded-t-lg flex items-center`;
+        
+        const tabNameSpan = document.createElement('span');
+        tabNameSpan.className = 'tab-name';
+        tabNameSpan.textContent = tab.name;
+        
+        const closeButton = document.createElement('span');
+        closeButton.className = 'close-tab-btn';
+        closeButton.innerHTML = '&times;';
+        closeButton.dataset.tabId = tab.id;
+
+        tabButton.appendChild(tabNameSpan);
+        tabButton.appendChild(closeButton);
+        tabContainer.appendChild(tabButton);
+    }
+    
+    function renderAddTabButton() {
+        const addTabButton = document.createElement('button');
+        addTabButton.className = 'add-tab-btn ml-2 w-8 h-8 rounded-full bg-gray-700 hover:bg-emerald-600 transition-colors flex items-center justify-center font-bold text-xl text-gray-400 hover:text-white';
+        addTabButton.title = "Add new session";
+        addTabButton.innerHTML = '+';
+        tabContainer.appendChild(addTabButton);
+    }
+
+    function renderTabPanel(tab) {
+        const OVERALL_TOTAL_GOAL = SESSION_TOTAL_GOAL * tabs.length;
+        const tabPanel = document.createElement('div');
+        tabPanel.id = `tab-panel-${tab.id}`;
+        tabPanel.setAttribute('role', 'tabpanel');
+        tabPanel.className = 'hidden tab-content space-y-3';
+
+        const progressHTML = `
+            <div class="space-y-4 mb-6 bg-gray-800/50 p-4 rounded-lg">
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <span class="text-base font-medium text-cyan-400">Session Progress (${tab.name})</span>
+                        <span id="session-progress-text-${tab.id}" class="text-sm font-medium text-cyan-400">0 / ${SESSION_TOTAL_GOAL}</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5"><div id="session-progress-bar-${tab.id}" class="progress-bar-fill bg-cyan-500 h-2.5 rounded-full" style="width: 0%"></div></div>
+                </div>
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <span class="text-base font-medium text-emerald-400">Overall Progress</span>
+                        <span id="overall-progress-text-${tab.id}" class="text-sm font-medium text-emerald-400">0 / ${OVERALL_TOTAL_GOAL}</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5"><div id="overall-progress-bar-${tab.id}" class="progress-bar-fill bg-emerald-500 h-2.5 rounded-full" style="width: 0%"></div></div>
+                </div>
+            </div>`;
+        tabPanel.innerHTML = progressHTML;
+
+        const tasksContainer = document.createElement('div');
+        tasksContainer.className = 'space-y-3';
+        TASKS.forEach((task, taskIndex) => {
+            const taskTotalGoal = task.dailyGoal * tabs.length;
+            const taskItem = document.createElement('div');
+            taskItem.className = 'task-item bg-gray-800 rounded-lg shadow-md p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4';
+            taskItem.style.animationDelay = `${taskIndex * 50}ms`;
+            taskItem.innerHTML = `
+                <div class="w-full sm:w-auto flex-grow sm:pr-4">
+                    <div class="flex justify-between items-baseline mb-1">
+                        <span class="font-semibold text-gray-300">${task.name}</span>
+                        <span id="task-progress-text-${tab.id}-${task.id}" class="text-xs font-medium text-gray-400">0 / ${taskTotalGoal}</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2"><div id="task-progress-bar-${tab.id}-${task.id}" class="progress-bar-fill bg-sky-500 h-2 rounded-full" style="width: 0%"></div></div>
+                </div>
+                <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0 self-end sm:self-center">
+                    <button class="control-btn minus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-red-500" data-tab-id="${tab.id}" data-task-id="${task.id}" data-change="-1">-</button>
+                    <input type="number" class="task-input w-16 text-center bg-gray-900 border border-gray-600 rounded-md h-8" value="0" min="0" max="${taskTotalGoal}" data-tab-id="${tab.id}" data-task-id="${task.id}">
+                    <span class="text-gray-400 text-sm">/ ${taskTotalGoal}</span>
+                    <button class="control-btn plus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-green-500" data-tab-id="${tab.id}" data-task-id="${task.id}" data-change="1">+</button>
+                </div>`;
+            tasksContainer.appendChild(taskItem);
+        });
+
+        tabPanel.appendChild(tasksContainer);
+        tabContentContainer.appendChild(tabPanel);
+    }
+
+    function updateUI() {
+        if (tabs.length === 0) return;
+        
+        let overallCompleted = 0;
+        const taskTotals = {};
+        TASKS.forEach(task => taskTotals[task.id] = 0);
+        const OVERALL_TOTAL_GOAL = SESSION_TOTAL_GOAL * tabs.length;
+
+        tabs.forEach(tab => {
+            let sessionCompleted = 0;
+            TASKS.forEach(task => {
+                const value = progressState[tab.id][task.id] || 0;
+                const input = document.querySelector(`.task-input[data-tab-id="${tab.id}"][data-task-id="${task.id}"]`);
+                if (input) input.value = value;
+                sessionCompleted += value;
+                taskTotals[task.id] += value;
+            });
+            overallCompleted += sessionCompleted;
+
+            const sessionPercent = SESSION_TOTAL_GOAL > 0 ? (sessionCompleted / SESSION_TOTAL_GOAL) * 100 : 0;
+            document.getElementById(`session-progress-bar-${tab.id}`).style.width = `${sessionPercent}%`;
+            document.getElementById(`session-progress-text-${tab.id}`).textContent = `${sessionCompleted} / ${SESSION_TOTAL_GOAL}`;
+        });
+
+        const overallPercent = OVERALL_TOTAL_GOAL > 0 ? (overallCompleted / OVERALL_TOTAL_GOAL) * 100 : 0;
+
+        tabs.forEach(tab => {
+            document.getElementById(`overall-progress-bar-${tab.id}`).style.width = `${overallPercent}%`;
+            document.getElementById(`overall-progress-text-${tab.id}`).textContent = `${overallCompleted} / ${OVERALL_TOTAL_GOAL}`;
+            TASKS.forEach(task => {
+                const taskTotalCompleted = taskTotals[task.id];
+                const taskTotalGoal = task.dailyGoal * tabs.length;
+                const taskPercent = taskTotalGoal > 0 ? (taskTotalCompleted / taskTotalGoal) * 100 : 0;
+                document.getElementById(`task-progress-bar-${tab.id}-${task.id}`).style.width = `${taskPercent}%`;
+                document.getElementById(`task-progress-text-${tab.id}-${task.id}`).textContent = `${taskTotalCompleted} / ${taskTotalGoal}`;
+            });
+        });
+    }
+
+    // --- CORE LOGIC & EVENT HANDLING ---
+    function handleValueChange(tabId, taskId, newValue) {
+        const task = TASKS.find(t => t.id === taskId);
+        if (!task) return;
+
+        let parsedValue = parseInt(newValue, 10) || 0;
+        let currentTotalForTask = 0;
+        tabs.forEach(tab => {
+            if (tab.id !== tabId) {
+                currentTotalForTask += (progressState[tab.id][taskId] || 0);
+            }
+        });
+
+        const taskTotalGoal = task.dailyGoal * tabs.length;
+        const remainingGoal = taskTotalGoal - currentTotalForTask;
+        const value = Math.max(0, Math.min(parsedValue, remainingGoal));
+
+        if (progressState[tabId][taskId] !== value) {
+            progressState[tabId][taskId] = value;
+            saveAppData();
+            updateUI();
+        } else if (parsedValue !== value) {
+            updateUI();
+        }
+    }
+
+    function attachEventListeners() {
+        tabContainer.addEventListener('click', (e) => {
+            const tabButton = e.target.closest('[role="tab"]');
+            const addTabBtn = e.target.closest('.add-tab-btn');
+            const closeTabBtn = e.target.closest('.close-tab-btn');
+
+            if (closeTabBtn) {
+                e.stopPropagation();
+                const tabIdToRemove = parseInt(closeTabBtn.dataset.tabId);
+                const tabToRemove = tabs.find(t => t.id === tabIdToRemove);
+                if (confirm(`Are you sure you want to delete session "${tabToRemove.name}"?`)) {
+                    const wasActive = document.getElementById(`tab-btn-${tabIdToRemove}`).classList.contains('active');
+                    const tabIndex = tabs.findIndex(t => t.id === tabIdToRemove);
+                    
+                    tabs.splice(tabIndex, 1);
+                    delete progressState[tabIdToRemove];
+
+                    renderAll();
+
+                    if (wasActive && tabs.length > 0) {
+                        const newIndex = Math.max(0, tabIndex - 1);
+                        document.querySelector(`[data-tab-id="${tabs[newIndex].id}"]`)?.click();
+                    }
+                }
+            } else if (tabButton) {
+                document.querySelectorAll('[role="tab"]').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('[role="tabpanel"]').forEach(panel => panel.classList.add('hidden'));
+                tabButton.classList.add('active');
+                document.getElementById(`tab-panel-${tabButton.dataset.tabId}`).classList.remove('hidden');
+            } else if (addTabBtn) {
+                const newTabName = prompt("Enter a name for the new session:", `Session ${tabs.length + 1}`);
+                if (newTabName) {
+                    const newTab = { id: Date.now(), name: newTabName };
+                    tabs.push(newTab);
+                    progressState[newTab.id] = {};
+                    TASKS.forEach(task => progressState[newTab.id][task.id] = 0);
+                    renderAll();
+                    document.getElementById(`tab-btn-${newTab.id}`).click();
+                }
+            }
+        });
+
+        tabContainer.addEventListener('dblclick', e => {
+            const tabNameSpan = e.target.closest('.tab-name');
+            if (!tabNameSpan) return;
+
+            const tabButton = tabNameSpan.closest('.tab-button');
+            const tabId = parseInt(tabButton.dataset.tabId);
+            const currentName = tabNameSpan.textContent;
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = currentName;
+            input.className = 'bg-gray-700 text-white rounded px-1 -ml-1';
+            input.style.width = `${tabNameSpan.offsetWidth + 10}px`;
+
+            tabNameSpan.replaceWith(input);
+            input.focus();
+            input.select();
+
+            const saveRename = () => {
+                const newName = input.value.trim();
+                const tab = tabs.find(t => t.id === tabId);
+                if (newName && tab) {
+                    tab.name = newName;
+                }
+                renderAll(); // Re-render to reflect changes everywhere
+                document.getElementById(`tab-btn-${tabId}`)?.classList.add('active');
+                 document.getElementById(`tab-panel-${tabId}`)?.classList.remove('hidden');
+            };
+
+            input.addEventListener('blur', saveRename);
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter') input.blur();
+                if (e.key === 'Escape') {
+                    input.value = currentName;
+                    input.blur();
+                }
+            });
+        });
+        
+        tabContentContainer.addEventListener('input', e => {
+            if (e.target.classList.contains('task-input')) {
+                const { tabId, taskId } = e.target.dataset;
+                handleValueChange(parseInt(tabId), taskId, e.target.value);
+            }
+        });
+
+        tabContentContainer.addEventListener('click', e => {
+            const controlBtn = e.target.closest('.control-btn');
+            if (controlBtn) {
+                const { tabId, taskId, change } = controlBtn.dataset;
+                const input = document.querySelector(`.task-input[data-tab-id="${tabId}"][data-task-id="${taskId}"]`);
+                if (input) {
+                    const newValue = (parseInt(input.value, 10) || 0) + parseInt(change, 10);
+                    handleValueChange(parseInt(tabId), taskId, newValue);
+                }
+            }
+        });
+    }
+
+    // --- INITIALIZATION ---
+    loadAppData();
+    renderAll();
+    attachEventListeners();
+});
+</script>
+</body>
+</html>

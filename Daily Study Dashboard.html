@@ -42,7 +42,7 @@
             color: #ffffff;
             transition: all 0.3s ease-in-out;
         }
-        
+
         /* --- Progress Bar --- */
         .progress-bar-fill { transition: width 0.5s ease-in-out; }
 
@@ -57,105 +57,105 @@
 </head>
 <body class="text-gray-200 antialiased">
 
-    <div class="container mx-auto max-w-4xl p-4 sm:p-6 md:p-8">
-        <header class="text-center mb-8">
-            <h1 class="text-4xl sm:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400 pb-2">
-                Daily Study Dashboard
-            </h1>
-            <p class="text-gray-400 mt-2 text-lg">Your 4-day study plan and progress tracker.</p>
-        </header>
+<div class="container mx-auto max-w-4xl p-4 sm:p-6 md:p-8">
+    <header class="text-center mb-8">
+        <h1 class="text-4xl sm:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400 pb-2">
+            Daily Study Dashboard
+        </h1>
+        <p class="text-gray-400 mt-2 text-lg">Your 4-day study plan and progress tracker.</p>
+    </header>
 
-        <!-- Tabs Container -->
-        <div role="tablist" class="flex flex-wrap sm:space-x-4 mb-6 border-b border-gray-700">
-            <!-- Tabs will be dynamically inserted here -->
-        </div>
-
-        <!-- Tab Content Container -->
-        <main id="tab-content-container" class="space-y-3">
-             <!-- Tab Panels will be dynamically inserted here -->
-        </main>
-        
-        <footer class="text-center mt-12 text-gray-500 text-sm">
-            <p>Happy studying!</p>
-        </footer>
+    <!-- Tabs Container -->
+    <div role="tablist" class="flex flex-wrap sm:space-x-4 mb-6 border-b border-gray-700">
+        <!-- Tabs will be dynamically inserted here -->
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const DAYS = ["Saturday", "Sunday", "Monday", "Tuesday"];
-            const TASKS = [
-                { id: 'dp-flashcards', name: 'dp', dailyGoal: 6 },
-                { id: 'graph', name: 'graph', dailyGoal: 35 },
-                { id: 'jb', name: 'iB', dailyGoal: 25 },
-                { id: 'faqs', name: 'FAQs', dailyGoal: 6 },
-                { id: 'misc', name: 'Misc Cards', dailyGoal: 108 },
-                { id: 'anki-misc', name: 'AD + FAQs + Misc: With Anki', dailyGoal: 4 },
-                { id: 'lc-discuss', name: 'LC Discuss', dailyGoal: 10 },
-                { id: 'lc', name: 'LC Set', dailyGoal: 14 },
-            ];
-            
-            const DAILY_TOTAL_GOAL = TASKS.reduce((sum, task) => sum + task.dailyGoal, 0);
-            const OVERALL_TOTAL_GOAL = DAILY_TOTAL_GOAL * DAYS.length;
-            
-            let progressState = {};
+    <!-- Tab Content Container -->
+    <main id="tab-content-container" class="space-y-3">
+        <!-- Tab Panels will be dynamically inserted here -->
+    </main>
 
-            const tabContainer = document.querySelector('[role="tablist"]');
-            const tabContentContainer = document.getElementById('tab-content-container');
+    <footer class="text-center mt-12 text-gray-500 text-sm">
+        <p>Happy studying!</p>
+    </footer>
+</div>
 
-            function loadState() {
-                const savedState = localStorage.getItem('studyProgressState');
-                if (savedState) {
-                    progressState = JSON.parse(savedState);
-                     // Data migration for newly added tasks, if any
-                    DAYS.forEach(day => {
-                        if (!progressState[day]) progressState[day] = {};
-                        TASKS.forEach(task => {
-                            if (progressState[day][task.id] === undefined) {
-                                progressState[day][task.id] = 0;
-                            }
-                        });
-                    });
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const DAYS = ["Saturday", "Sunday", "Monday", "Tuesday"];
+        const TASKS = [
+            { id: 'dp-flashcards', name: 'dp', dailyGoal: 6 },
+            { id: 'graph', name: 'graph', dailyGoal: 35 },
+            { id: 'jb', name: 'iB', dailyGoal: 25 },
+            { id: 'faqs', name: 'FAQs', dailyGoal: 6 },
+            { id: 'misc', name: 'Misc Cards', dailyGoal: 108 },
+            { id: 'anki-misc', name: 'AD + FAQs + Misc: With Anki', dailyGoal: 4 },
+            { id: 'lc-discuss', name: 'LC Discuss', dailyGoal: 10 },
+            { id: 'lc', name: 'LC Set', dailyGoal: 14 },
+        ];
 
-                } else {
-                    // Initialize a fresh state
-                    DAYS.forEach(day => {
-                        progressState[day] = {};
-                        TASKS.forEach(task => {
+        const DAILY_TOTAL_GOAL = TASKS.reduce((sum, task) => sum + task.dailyGoal, 0);
+        const OVERALL_TOTAL_GOAL = DAILY_TOTAL_GOAL * DAYS.length;
+
+        let progressState = {};
+
+        const tabContainer = document.querySelector('[role="tablist"]');
+        const tabContentContainer = document.getElementById('tab-content-container');
+
+        function loadState() {
+            const savedState = localStorage.getItem('studyProgressState');
+            if (savedState) {
+                progressState = JSON.parse(savedState);
+                // Data migration for newly added tasks, if any
+                DAYS.forEach(day => {
+                    if (!progressState[day]) progressState[day] = {};
+                    TASKS.forEach(task => {
+                        if (progressState[day][task.id] === undefined) {
                             progressState[day][task.id] = 0;
-                        });
+                        }
                     });
-                }
+                });
+
+            } else {
+                // Initialize a fresh state
+                DAYS.forEach(day => {
+                    progressState[day] = {};
+                    TASKS.forEach(task => {
+                        progressState[day][task.id] = 0;
+                    });
+                });
             }
+        }
 
-            function saveState() {
-                localStorage.setItem('studyProgressState', JSON.stringify(progressState));
-            }
+        function saveState() {
+            localStorage.setItem('studyProgressState', JSON.stringify(progressState));
+        }
 
-            function render() {
-                // Clear existing content
-                tabContainer.innerHTML = '';
-                tabContentContainer.innerHTML = '';
+        function render() {
+            // Clear existing content
+            tabContainer.innerHTML = '';
+            tabContentContainer.innerHTML = '';
 
-                DAYS.forEach((day, index) => {
-                    const dayId = day.toLowerCase();
-                    // Create Tab Button
-                    const tabButton = document.createElement('button');
-                    tabButton.id = `tab-btn-${dayId}`;
-                    tabButton.setAttribute('role', 'tab');
-                    tabButton.setAttribute('aria-controls', `tab-panel-${dayId}`);
-                    tabButton.className = `tab-button px-4 py-3 text-sm md:text-base font-medium text-gray-400 hover:text-white rounded-t-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50`;
-                    tabButton.textContent = day;
-                    tabButton.dataset.target = `tab-panel-${dayId}`;
-                    tabContainer.appendChild(tabButton);
+            DAYS.forEach((day, index) => {
+                const dayId = day.toLowerCase();
+                // Create Tab Button
+                const tabButton = document.createElement('button');
+                tabButton.id = `tab-btn-${dayId}`;
+                tabButton.setAttribute('role', 'tab');
+                tabButton.setAttribute('aria-controls', `tab-panel-${dayId}`);
+                tabButton.className = `tab-button px-4 py-3 text-sm md:text-base font-medium text-gray-400 hover:text-white rounded-t-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50`;
+                tabButton.textContent = day;
+                tabButton.dataset.target = `tab-panel-${dayId}`;
+                tabContainer.appendChild(tabButton);
 
-                    // Create Tab Panel
-                    const tabPanel = document.createElement('div');
-                    tabPanel.id = `tab-panel-${dayId}`;
-                    tabPanel.setAttribute('role', 'tabpanel');
-                    tabPanel.className = 'hidden tab-content space-y-3';
-                    
-                    // Create Progress Bars inside panel
-                    const progressHTML = `
+                // Create Tab Panel
+                const tabPanel = document.createElement('div');
+                tabPanel.id = `tab-panel-${dayId}`;
+                tabPanel.setAttribute('role', 'tabpanel');
+                tabPanel.className = 'hidden tab-content space-y-3';
+
+                // Create Progress Bars inside panel
+                const progressHTML = `
                         <div class="space-y-4 mb-6 bg-gray-800/50 p-4 rounded-lg">
                             <div>
                                 <div class="flex justify-between mb-1">
@@ -177,20 +177,21 @@
                             </div>
                         </div>
                     `;
-                    tabPanel.innerHTML = progressHTML;
+                tabPanel.innerHTML = progressHTML;
 
-                    // Create Task Items
-                    const tasksContainer = document.createElement('div');
-                    tasksContainer.className = 'space-y-3';
-                    TASKS.forEach((task, taskIndex) => {
-                        const taskItem = document.createElement('div');
-                        taskItem.className = 'task-item bg-gray-800 rounded-lg shadow-md p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4';
-                        taskItem.style.animationDelay = `${taskIndex * 50}ms`;
-                        taskItem.innerHTML = `
+                // Create Task Items
+                const tasksContainer = document.createElement('div');
+                tasksContainer.className = 'space-y-3';
+                TASKS.forEach((task, taskIndex) => {
+                    const taskTotalGoal = task.dailyGoal * DAYS.length;
+                    const taskItem = document.createElement('div');
+                    taskItem.className = 'task-item bg-gray-800 rounded-lg shadow-md p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4';
+                    taskItem.style.animationDelay = `${taskIndex * 50}ms`;
+                    taskItem.innerHTML = `
                             <div class="w-full sm:w-auto flex-grow sm:pr-4">
                                 <div class="flex justify-between items-baseline mb-1">
                                     <span class="font-semibold text-gray-300">${task.name}</span>
-                                    <span id="task-progress-text-${dayId}-${task.id}" class="text-xs font-medium text-gray-400">0 / ${task.dailyGoal}</span>
+                                    <span id="task-progress-text-${dayId}-${task.id}" class="text-xs font-medium text-gray-400">0 / ${taskTotalGoal}</span>
                                 </div>
                                 <div class="w-full bg-gray-700 rounded-full h-2">
                                     <div id="task-progress-bar-${dayId}-${task.id}" class="progress-bar-fill bg-sky-500 h-2 rounded-full" style="width: 0%"></div>
@@ -203,139 +204,147 @@
                                 <button class="control-btn plus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-green-500 transition-colors flex items-center justify-center font-bold text-xl" data-day="${day}" data-task="${task.id}" data-change="1">+</button>
                             </div>
                         `;
-                        tasksContainer.appendChild(taskItem);
-                    });
-                    
-                    tabPanel.appendChild(tasksContainer);
-                    tabContentContainer.appendChild(tabPanel);
+                    tasksContainer.appendChild(taskItem);
                 });
+
+                tabPanel.appendChild(tasksContainer);
+                tabContentContainer.appendChild(tabPanel);
+            });
+        }
+
+        function updateUI() {
+            let overallCompleted = 0;
+            const taskTotals = {};
+            TASKS.forEach(task => taskTotals[task.id] = 0);
+
+            // First pass: Calculate daily totals and aggregate task totals
+            DAYS.forEach(day => {
+                let dailyCompleted = 0;
+                TASKS.forEach(task => {
+                    const value = progressState[day][task.id] || 0;
+                    const input = document.querySelector(`.task-input[data-day="${day}"][data-task="${task.id}"]`);
+                    if (input) input.value = value;
+
+                    dailyCompleted += value;
+                    taskTotals[task.id] += value;
+                });
+
+                overallCompleted += dailyCompleted;
+
+                // Update daily progress for this day
+                const dayId = day.toLowerCase();
+                const dailyPercent = DAILY_TOTAL_GOAL > 0 ? (dailyCompleted / DAILY_TOTAL_GOAL) * 100 : 0;
+                const dailyProgressBar = document.getElementById(`daily-progress-bar-${dayId}`);
+                const dailyProgressText = document.getElementById(`daily-progress-text-${dayId}`);
+                if (dailyProgressBar) dailyProgressBar.style.width = `${dailyPercent}%`;
+                if (dailyProgressText) dailyProgressText.textContent = `${dailyCompleted} / ${DAILY_TOTAL_GOAL}`;
+            });
+
+            const overallPercent = OVERALL_TOTAL_GOAL > 0 ? (overallCompleted / OVERALL_TOTAL_GOAL) * 100 : 0;
+
+            // Second pass: Update overall progress and individual task progress on all tabs
+            DAYS.forEach(day => {
+                const dayId = day.toLowerCase();
+
+                // Update overall progress bar for this tab
+                const overallProgressBar = document.getElementById(`overall-progress-bar-${dayId}`);
+                const overallProgressText = document.getElementById(`overall-progress-text-${dayId}`);
+                if (overallProgressBar) overallProgressBar.style.width = `${overallPercent}%`;
+                if (overallProgressText) overallProgressText.textContent = `${overallCompleted} / ${OVERALL_TOTAL_GOAL}`;
+
+                // Update individual task progress bars for this tab
+                TASKS.forEach(task => {
+                    const taskTotalCompleted = taskTotals[task.id];
+                    const taskTotalGoal = task.dailyGoal * DAYS.length;
+                    const taskPercent = taskTotalGoal > 0 ? (taskTotalCompleted / taskTotalGoal) * 100 : 0;
+
+                    const progressBar = document.getElementById(`task-progress-bar-${dayId}-${task.id}`);
+                    const progressText = document.getElementById(`task-progress-text-${dayId}-${task.id}`);
+                    if (progressBar) progressBar.style.width = `${taskPercent}%`;
+                    if (progressText) progressText.textContent = `${taskTotalCompleted} / ${taskTotalGoal}`;
+                });
+            });
+        }
+
+        function handleValueChange(day, taskId, newValue) {
+            const task = TASKS.find(t => t.id === taskId);
+            if (!task) return;
+
+            // Clamp the value between 0 and the daily goal
+            const value = Math.max(0, Math.min(task.dailyGoal, parseInt(newValue, 10) || 0));
+
+            if (progressState[day][taskId] !== value) {
+                progressState[day][taskId] = value;
+                saveState();
+                updateUI();
             }
+        }
 
-            function updateUI() {
-                let overallCompleted = 0;
+        function attachEventListeners() {
+            tabContainer.addEventListener('click', (e) => {
+                const tabButton = e.target.closest('[role="tab"]');
+                if (tabButton) {
+                    document.querySelectorAll('[role="tab"]').forEach(btn => btn.classList.remove('active'));
+                    document.querySelectorAll('[role="tabpanel"]').forEach(panel => panel.classList.add('hidden'));
 
-                // A single pass to update daily and individual task progress
-                DAYS.forEach(day => {
-                    const dayId = day.toLowerCase();
-                    let dailyCompleted = 0;
-
-                    TASKS.forEach(task => {
-                        const value = progressState[day][task.id] || 0;
-                        const input = document.querySelector(`.task-input[data-day="${day}"][data-task="${task.id}"]`);
-                        if (input) input.value = value;
-
-                        dailyCompleted += value;
-
-                        // Update individual task progress for this specific day
-                        const taskDailyGoal = task.dailyGoal;
-                        const taskPercent = taskDailyGoal > 0 ? (value / taskDailyGoal) * 100 : 0;
-                        
-                        const progressBar = document.getElementById(`task-progress-bar-${dayId}-${task.id}`);
-                        const progressText = document.getElementById(`task-progress-text-${dayId}-${task.id}`);
-                        if (progressBar) progressBar.style.width = `${taskPercent}%`;
-                        if (progressText) progressText.textContent = `${value} / ${taskDailyGoal}`;
-                    });
-                    
-                    overallCompleted += dailyCompleted;
-
-                    // Update daily progress for this day
-                    const dailyPercent = DAILY_TOTAL_GOAL > 0 ? (dailyCompleted / DAILY_TOTAL_GOAL) * 100 : 0;
-                    const dailyProgressBar = document.getElementById(`daily-progress-bar-${dayId}`);
-                    const dailyProgressText = document.getElementById(`daily-progress-text-${dayId}`);
-                    if (dailyProgressBar) dailyProgressBar.style.width = `${dailyPercent}%`;
-                    if (dailyProgressText) dailyProgressText.textContent = `${dailyCompleted} / ${DAILY_TOTAL_GOAL}`;
-                });
-
-                // After all daily values are calculated, update overall progress on all tabs
-                const overallPercent = OVERALL_TOTAL_GOAL > 0 ? (overallCompleted / OVERALL_TOTAL_GOAL) * 100 : 0;
-                DAYS.forEach(day => {
-                    const dayId = day.toLowerCase();
-                    const overallProgressBar = document.getElementById(`overall-progress-bar-${dayId}`);
-                    const overallProgressText = document.getElementById(`overall-progress-text-${dayId}`);
-                    if (overallProgressBar) overallProgressBar.style.width = `${overallPercent}%`;
-                    if (overallProgressText) overallProgressText.textContent = `${overallCompleted} / ${OVERALL_TOTAL_GOAL}`;
-                });
-            }
-            
-            function handleValueChange(day, taskId, newValue) {
-                const task = TASKS.find(t => t.id === taskId);
-                if (!task) return;
-                
-                // Clamp the value between 0 and the daily goal
-                const value = Math.max(0, Math.min(task.dailyGoal, parseInt(newValue, 10) || 0));
-
-                if (progressState[day][taskId] !== value) {
-                    progressState[day][taskId] = value;
-                    saveState();
-                    updateUI();
+                    tabButton.classList.add('active');
+                    const targetPanel = document.getElementById(tabButton.dataset.target);
+                    if (targetPanel) {
+                        targetPanel.classList.remove('hidden');
+                    }
                 }
-            }
+            });
 
-            function attachEventListeners() {
-                tabContainer.addEventListener('click', (e) => {
-                    const tabButton = e.target.closest('[role="tab"]');
-                    if (tabButton) {
-                        document.querySelectorAll('[role="tab"]').forEach(btn => btn.classList.remove('active'));
-                        document.querySelectorAll('[role="tabpanel"]').forEach(panel => panel.classList.add('hidden'));
-
-                        tabButton.classList.add('active');
-                        const targetPanel = document.getElementById(tabButton.dataset.target);
-                        if (targetPanel) {
-                            targetPanel.classList.remove('hidden');
-                        }
-                    }
-                });
-
-                tabContentContainer.addEventListener('input', (e) => {
-                    if (e.target.classList.contains('task-input')) {
-                        const { day, task } = e.target.dataset;
-                        handleValueChange(day, task, e.target.value);
-                    }
-                });
-                
-                tabContentContainer.addEventListener('click', (e) => {
-                    const controlBtn = e.target.closest('.control-btn');
-                    if(controlBtn) {
-                        const { day, task, change } = controlBtn.dataset;
-                        const input = document.querySelector(`.task-input[data-day="${day}"][data-task="${task}"]`);
-                        if(input) {
-                            const currentValue = parseInt(input.value, 10) || 0;
-                            const newValue = currentValue + parseInt(change, 10);
-                            handleValueChange(day, task, newValue);
-                        }
-                    }
-                });
-            }
-            
-            function setActiveTab() {
-                const today = new Date();
-                // In case you're testing on a day outside Sat-Tue, let's find the first relevant day
-                const dayIndex = today.getDay(); // Sunday = 0, ... Saturday = 6
-                
-                let activeDayName = DAYS[0]; // Default to Saturday
-                if (dayIndex === 0) activeDayName = "Sunday";
-                else if (dayIndex === 1) activeDayName = "Monday";
-                else if (dayIndex === 2) activeDayName = "Tuesday";
-                else if (dayIndex === 6) activeDayName = "Saturday";
-
-                const activeTabBtn = document.getElementById(`tab-btn-${activeDayName.toLowerCase()}`);
-                
-                if (activeTabBtn) {
-                    activeTabBtn.click();
-                } else {
-                    // Fallback to the first tab if something goes wrong
-                    document.querySelector('[role="tablist"] button')?.click();
+            tabContentContainer.addEventListener('input', (e) => {
+                if (e.target.classList.contains('task-input')) {
+                    const { day, task } = e.target.dataset;
+                    handleValueChange(day, task, e.target.value);
                 }
-            }
+            });
 
-            // --- Initialization ---
-            loadState();
-            render();
-            updateUI();
-            attachEventListeners();
-            setActiveTab();
-        });
-    </script>
+            tabContentContainer.addEventListener('click', (e) => {
+                const controlBtn = e.target.closest('.control-btn');
+                if(controlBtn) {
+                    const { day, task, change } = controlBtn.dataset;
+                    const input = document.querySelector(`.task-input[data-day="${day}"][data-task="${task}"]`);
+                    if(input) {
+                        const currentValue = parseInt(input.value, 10) || 0;
+                        const newValue = currentValue + parseInt(change, 10);
+                        handleValueChange(day, task, newValue);
+                    }
+                }
+            });
+        }
+
+        function setActiveTab() {
+            const today = new Date();
+            // In case you're testing on a day outside Sat-Tue, let's find the first relevant day
+            const dayIndex = today.getDay(); // Sunday = 0, ... Saturday = 6
+
+            let activeDayName = DAYS[0]; // Default to Saturday
+            if (dayIndex === 0) activeDayName = "Sunday";
+            else if (dayIndex === 1) activeDayName = "Monday";
+            else if (dayIndex === 2) activeDayName = "Tuesday";
+            else if (dayIndex === 6) activeDayName = "Saturday";
+
+            const activeTabBtn = document.getElementById(`tab-btn-${activeDayName.toLowerCase()}`);
+
+            if (activeTabBtn) {
+                activeTabBtn.click();
+            } else {
+                // Fallback to the first tab if something goes wrong
+                document.querySelector('[role="tablist"] button')?.click();
+            }
+        }
+
+        // --- Initialization ---
+        loadState();
+        render();
+        updateUI();
+        attachEventListeners();
+        setActiveTab();
+    });
+</script>
 </body>
 </html>
 

@@ -93,6 +93,7 @@
         const DAILY_TOTAL_GOAL = TASKS.reduce((sum, task) => sum + task.dailyGoal, 0);
         const OVERALL_TOTAL_GOAL = DAILY_TOTAL_GOAL * DAYS.length;
 
+        // The state stores the number of items DONE per day.
         let progressState = {};
 
         const tabContainer = document.querySelector('[role="tablist"]');
@@ -102,7 +103,6 @@
             const savedState = localStorage.getItem('studyProgressState');
             if (savedState) {
                 progressState = JSON.parse(savedState);
-                // Data migration for newly added tasks, if any
                 DAYS.forEach(day => {
                     if (!progressState[day]) progressState[day] = {};
                     TASKS.forEach(task => {
@@ -111,9 +111,7 @@
                         }
                     });
                 });
-
             } else {
-                // Initialize a fresh state
                 DAYS.forEach(day => {
                     progressState[day] = {};
                     TASKS.forEach(task => {
@@ -128,13 +126,11 @@
         }
 
         function render() {
-            // Clear existing content
             tabContainer.innerHTML = '';
             tabContentContainer.innerHTML = '';
 
             DAYS.forEach((day, index) => {
                 const dayId = day.toLowerCase();
-                // Create Tab Button
                 const tabButton = document.createElement('button');
                 tabButton.id = `tab-btn-${dayId}`;
                 tabButton.setAttribute('role', 'tab');
@@ -144,13 +140,11 @@
                 tabButton.dataset.target = `tab-panel-${dayId}`;
                 tabContainer.appendChild(tabButton);
 
-                // Create Tab Panel
                 const tabPanel = document.createElement('div');
                 tabPanel.id = `tab-panel-${dayId}`;
                 tabPanel.setAttribute('role', 'tabpanel');
                 tabPanel.className = 'hidden tab-content space-y-3';
 
-                // Create Progress Bars inside panel
                 const progressHTML = `
                         <div class="space-y-4 mb-6 bg-gray-800/50 p-4 rounded-lg">
                             <div>
@@ -175,7 +169,6 @@
                     `;
                 tabPanel.innerHTML = progressHTML;
 
-                // Create Task Items
                 const tasksContainer = document.createElement('div');
                 tasksContainer.className = 'space-y-3';
                 TASKS.forEach((task, taskIndex) => {
@@ -194,10 +187,13 @@
                                 </div>
                             </div>
                             <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0 self-end sm:self-center">
-                                <button class="control-btn minus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-red-500 transition-colors flex items-center justify-center font-bold text-xl" data-day="${day}" data-task="${task.id}" data-change="-1">-</button>
-                                <input type="number" class="task-input w-16 text-center bg-gray-900 border border-gray-600 rounded-md h-8 focus:ring-2 focus:ring-sky-500 focus:border-sky-500" value="0" min="0" max="${taskTotalGoal}" data-day="${day}" data-task="${task.id}">
-                                <span class="text-gray-400 text-sm">/ ${taskTotalGoal}</span>
-                                <button class="control-btn plus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-green-500 transition-colors flex items-center justify-center font-bold text-xl" data-day="${day}" data-task="${task.id}" data-change="1">+</button>
+                                <button class="control-btn minus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-red-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="-1" title="Decrement items done">-</button>
+                                <div class="flex items-center space-x-2">
+                                     <span class="text-gray-400 text-sm whitespace-nowrap">Left:</span>
+                                     <input type="number" class="task-input w-14 text-center bg-gray-900 border border-gray-600 rounded-md h-8 focus:ring-2 focus:ring-sky-500 focus:border-sky-500" value="${taskTotalGoal}" min="0" max="${taskTotalGoal}" data-day="${day}" data-task="${task.id}">
+                                     <span class="text-gray-400 text-sm">/ ${taskTotalGoal}</span>
+                                </div>
+                                <button class="control-btn plus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-green-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="1" title="Increment items done">+</button>
                             </div>
                         `;
                     tasksContainer.appendChild(taskItem);
@@ -213,21 +209,16 @@
             const taskTotals = {};
             TASKS.forEach(task => taskTotals[task.id] = 0);
 
-            // First pass: Calculate daily totals and aggregate task totals
             DAYS.forEach(day => {
                 let dailyCompleted = 0;
                 TASKS.forEach(task => {
-                    const value = progressState[day][task.id] || 0;
-                    const input = document.querySelector(`.task-input[data-day="${day}"][data-task="${task.id}"]`);
-                    if (input) input.value = value;
-
-                    dailyCompleted += value;
-                    taskTotals[task.id] += value;
+                    const doneToday = progressState[day][task.id] || 0;
+                    dailyCompleted += doneToday;
+                    taskTotals[task.id] += doneToday;
                 });
 
                 overallCompleted += dailyCompleted;
 
-                // Update daily progress for this day
                 const dayId = day.toLowerCase();
                 const dailyPercent = DAILY_TOTAL_GOAL > 0 ? (dailyCompleted / DAILY_TOTAL_GOAL) * 100 : 0;
                 const dailyProgressBar = document.getElementById(`daily-progress-bar-${dayId}`);
@@ -238,22 +229,25 @@
 
             const overallPercent = OVERALL_TOTAL_GOAL > 0 ? (overallCompleted / OVERALL_TOTAL_GOAL) * 100 : 0;
 
-            // Second pass: Update overall progress and individual task progress on all tabs
             DAYS.forEach(day => {
                 const dayId = day.toLowerCase();
 
-                // Update overall progress bar for this tab
                 const overallProgressBar = document.getElementById(`overall-progress-bar-${dayId}`);
                 const overallProgressText = document.getElementById(`overall-progress-text-${dayId}`);
                 if (overallProgressBar) overallProgressBar.style.width = `${overallPercent}%`;
                 if (overallProgressText) overallProgressText.textContent = `${overallCompleted} / ${OVERALL_TOTAL_GOAL}`;
 
-                // Update individual task progress bars for this tab
                 TASKS.forEach(task => {
                     const taskTotalCompleted = taskTotals[task.id];
                     const taskTotalGoal = task.dailyGoal * DAYS.length;
-                    const taskPercent = taskTotalGoal > 0 ? (taskTotalCompleted / taskTotalGoal) * 100 : 0;
+                    const taskTotalRemaining = taskTotalGoal - taskTotalCompleted;
 
+                    const input = document.querySelector(`.task-input[data-day="${day}"][data-task="${task.id}"]`);
+                    if (input) {
+                        input.value = taskTotalRemaining;
+                    }
+
+                    const taskPercent = taskTotalGoal > 0 ? (taskTotalCompleted / taskTotalGoal) * 100 : 0;
                     const progressBar = document.getElementById(`task-progress-bar-${dayId}-${task.id}`);
                     const progressText = document.getElementById(`task-progress-text-${dayId}-${task.id}`);
                     if (progressBar) progressBar.style.width = `${taskPercent}%`;
@@ -261,38 +255,41 @@
                 });
             });
         }
+        
+        function distributeTotalDone(taskId, totalDone) {
+            DAYS.forEach(day => {
+                progressState[day][taskId] = 0;
+            });
 
-        function handleValueChange(day, taskId, newValue) {
+            let remainingToDistribute = totalDone;
             const task = TASKS.find(t => t.id === taskId);
             if (!task) return;
 
-            let parsedValue = parseInt(newValue, 10) || 0;
-
-            // Calculate current total for this task, excluding the day being changed
-            let currentTotalForTask = 0;
-            DAYS.forEach(d => {
-                if (d !== day) {
-                    currentTotalForTask += (progressState[d][taskId] || 0);
-                }
-            });
+            for (const day of DAYS) {
+                if (remainingToDistribute <= 0) break;
+                const canAdd = Math.min(remainingToDistribute, task.dailyGoal);
+                progressState[day][taskId] = canAdd;
+                remainingToDistribute -= canAdd;
+            }
+        }
+        
+        function handleTaskChange(taskId, newTotalDone) {
+            const task = TASKS.find(t => t.id === taskId);
+            if (!task) return;
 
             const taskTotalGoal = task.dailyGoal * DAYS.length;
-            // The max value for this input is the total goal minus what's done on other days
-            const remainingGoal = taskTotalGoal - currentTotalForTask;
+            const clampedTotalDone = Math.max(0, Math.min(newTotalDone, taskTotalGoal));
 
-            // Clamp the value for the current day's input to not exceed the total goal
-            const value = Math.max(0, Math.min(parsedValue, remainingGoal));
+            let currentTotalDone = 0;
+            DAYS.forEach(day => {
+                currentTotalDone += (progressState[day][taskId] || 0);
+            });
 
-            if (progressState[day][taskId] !== value) {
-                progressState[day][taskId] = value;
+            if (currentTotalDone !== clampedTotalDone) {
+                distributeTotalDone(taskId, clampedTotalDone);
                 saveState();
-                updateUI();
-            } else if (parsedValue !== value) {
-                // If the user typed a value that was clamped (e.g., too high),
-                // the state hasn't changed, but the input field needs to be updated
-                // to show the clamped value. updateUI() handles this.
-                updateUI();
             }
+            updateUI();
         }
 
         function attachEventListeners() {
@@ -312,28 +309,35 @@
 
             tabContentContainer.addEventListener('input', (e) => {
                 if (e.target.classList.contains('task-input')) {
-                    const { day, task } = e.target.dataset;
-                    handleValueChange(day, task, e.target.value);
+                    const { task: taskId } = e.target.dataset;
+                    const task = TASKS.find(t => t.id === taskId);
+                    if (!task) return;
+                    
+                    const remainingValue = parseInt(e.target.value, 10);
+                    if (!isNaN(remainingValue)) {
+                        const taskTotalGoal = task.dailyGoal * DAYS.length;
+                        const doneValue = taskTotalGoal - remainingValue;
+                        handleTaskChange(taskId, doneValue);
+                    }
                 }
             });
 
             tabContentContainer.addEventListener('click', (e) => {
                 const controlBtn = e.target.closest('.control-btn');
                 if(controlBtn) {
-                    const { day, task, change } = controlBtn.dataset;
-                    const input = document.querySelector(`.task-input[data-day="${day}"][data-task="${task}"]`);
-                    if(input) {
-                        const currentValue = parseInt(input.value, 10) || 0;
-                        const newValue = currentValue + parseInt(change, 10);
-                        handleValueChange(day, task, newValue);
-                    }
+                    const { task, change } = controlBtn.dataset;
+                    let currentTotalDone = 0;
+                    DAYS.forEach(day => {
+                        currentTotalDone += (progressState[day][task] || 0);
+                    });
+                    const newTotalDone = currentTotalDone + parseInt(change, 10);
+                    handleTaskChange(task, newTotalDone);
                 }
             });
         }
 
         function setActiveTab() {
             const today = new Date();
-            // In case you're testing on a day outside Sat-Tue, let's find the first relevant day
             const dayIndex = today.getDay(); // Sunday = 0, ... Saturday = 6
 
             let activeDayName = DAYS[0]; // Default to Saturday
@@ -343,12 +347,10 @@
             else if (dayIndex === 6) activeDayName = "Saturday";
 
             const activeTabBtn = document.getElementById(`tab-btn-${activeDayName.toLowerCase()}`);
-
             if (activeTabBtn) {
                 activeTabBtn.click();
             } else {
-                // Fallback to the first tab if something goes wrong
-                document.querySelector('[role="tablist"] button')?.click();
+                document.querySelector('[role="tablist"] button')?.click(); // Fallback
             }
         }
 
@@ -362,3 +364,4 @@
 </script>
 </body>
 </html>
+

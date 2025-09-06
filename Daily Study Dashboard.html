@@ -65,15 +65,11 @@
         <p class="text-gray-400 mt-2 text-lg">Your 4-day study plan and progress tracker.</p>
     </header>
 
-    <!-- Tabs Container -->
     <div role="tablist" class="flex flex-wrap sm:space-x-4 mb-6 border-b border-gray-700">
-        <!-- Tabs will be dynamically inserted here -->
-    </div>
+        </div>
 
-    <!-- Tab Content Container -->
     <main id="tab-content-container" class="space-y-3">
-        <!-- Tab Panels will be dynamically inserted here -->
-    </main>
+        </main>
 
     <footer class="text-center mt-12 text-gray-500 text-sm">
         <p>Happy studying!</p>
@@ -199,8 +195,8 @@
                             </div>
                             <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0 self-end sm:self-center">
                                 <button class="control-btn minus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-red-500 transition-colors flex items-center justify-center font-bold text-xl" data-day="${day}" data-task="${task.id}" data-change="-1">-</button>
-                                <input type="number" class="task-input w-16 text-center bg-gray-900 border border-gray-600 rounded-md h-8 focus:ring-2 focus:ring-sky-500 focus:border-sky-500" value="0" min="0" max="${task.dailyGoal}" data-day="${day}" data-task="${task.id}">
-                                <span class="text-gray-400 text-sm">/ ${task.dailyGoal}</span>
+                                <input type="number" class="task-input w-16 text-center bg-gray-900 border border-gray-600 rounded-md h-8 focus:ring-2 focus:ring-sky-500 focus:border-sky-500" value="0" min="0" max="${taskTotalGoal}" data-day="${day}" data-task="${task.id}">
+                                <span class="text-gray-400 text-sm">/ ${taskTotalGoal}</span>
                                 <button class="control-btn plus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-green-500 transition-colors flex items-center justify-center font-bold text-xl" data-day="${day}" data-task="${task.id}" data-change="1">+</button>
                             </div>
                         `;
@@ -270,12 +266,31 @@
             const task = TASKS.find(t => t.id === taskId);
             if (!task) return;
 
-            // Clamp the value between 0 and the daily goal
-            const value = Math.max(0, Math.min(task.dailyGoal, parseInt(newValue, 10) || 0));
+            let parsedValue = parseInt(newValue, 10) || 0;
+
+            // Calculate current total for this task, excluding the day being changed
+            let currentTotalForTask = 0;
+            DAYS.forEach(d => {
+                if (d !== day) {
+                    currentTotalForTask += (progressState[d][taskId] || 0);
+                }
+            });
+
+            const taskTotalGoal = task.dailyGoal * DAYS.length;
+            // The max value for this input is the total goal minus what's done on other days
+            const remainingGoal = taskTotalGoal - currentTotalForTask;
+
+            // Clamp the value for the current day's input to not exceed the total goal
+            const value = Math.max(0, Math.min(parsedValue, remainingGoal));
 
             if (progressState[day][taskId] !== value) {
                 progressState[day][taskId] = value;
                 saveState();
+                updateUI();
+            } else if (parsedValue !== value) {
+                // If the user typed a value that was clamped (e.g., too high),
+                // the state hasn't changed, but the input field needs to be updated
+                // to show the clamped value. updateUI() handles this.
                 updateUI();
             }
         }
@@ -347,4 +362,3 @@
 </script>
 </body>
 </html>
-

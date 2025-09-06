@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Study Dashboard</title>
+    <link rel="icon" type="image/png" href="https://us1.discourse-cdn.com/flex002/uploads/anki2/original/2X/2/24bfef76259176f6f6e369b588d07f614d6d631c.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Tailwind gray-900 */
+        }
+
+        /* --- Custom Scrollbar --- */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+        /* --- Entry Animation --- */
+        @keyframes fadeInSlideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .task-item { animation: fadeInSlideUp 0.5s ease-out forwards; opacity: 0; }
+
+        /* --- Tab Content Fade-in --- */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .tab-content:not(.hidden) { animation: fadeIn 0.5s ease-in-out; }
+
+        /* --- Tab Switch Animation --- */
+        .tab-button.active {
+            border-bottom-width: 2px;
+            border-color: #38bdf8; /* sky-400 */
+            color: #ffffff;
+            transition: all 0.3s ease-in-out;
+        }
+
+        /* --- Progress Bar --- */
+        .progress-bar-fill { transition: width 0.5s ease-in-out; }
+
+        /* --- Number Input Customization --- */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] { -moz-appearance: textfield; }
+    </style>
+</head>
+<body class="text-gray-200 antialiased">
+
+<div class="container mx-auto max-w-4xl p-4 sm:p-6 md:p-8">
+    <header class="text-center mb-8">
+        <h1 class="text-4xl sm:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400 pb-2">
+            Daily Study Dashboard
+        </h1>
+        <p class="text-gray-400 mt-2 text-lg">Your 4-day study plan and progress tracker.</p>
+    </header>
+
+    <!-- Tabs Container -->
+    <div role="tablist" class="flex flex-wrap sm:space-x-4 mb-6 border-b border-gray-700">
+        <!-- Tabs will be dynamically inserted here -->
+    </div>
+
+    <!-- Tab Content Container -->
+    <main id="tab-content-container" class="space-y-3">
+        <!-- Tab Panels will be dynamically inserted here -->
+    </main>
+
+    <footer class="text-center mt-12 text-gray-500 text-sm">
+        <p>Happy studying!</p>
+    </footer>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const DAYS = ["Saturday", "Sunday", "Monday", "Tuesday"];
+        const TASKS = [
+            { id: 'dp-flashcards', name: 'dp', dailyGoal: 6 },
+            { id: 'graph', name: 'graph', dailyGoal: 35 },
+            { id: 'jb', name: 'iB', dailyGoal: 25 },
+            { id: 'faqs', name: 'FAQs', dailyGoal: 6 },
+            { id: 'misc', name: 'Misc Cards', dailyGoal: 108 },
+            { id: 'anki-misc', name: 'AD + FAQs + Misc: With Anki', dailyGoal: 4 },
+            { id: 'lc-discuss', name: 'LC Discuss', dailyGoal: 10 },
+            { id: 'lc', name: 'LC Set', dailyGoal: 14 },
+        ];
+
+        const DAILY_TOTAL_GOAL = TASKS.reduce((sum, task) => sum + task.dailyGoal, 0);
+        const OVERALL_TOTAL_GOAL = DAILY_TOTAL_GOAL * DAYS.length;
+
+        let progressState = {};
+
+        const tabContainer = document.querySelector('[role="tablist"]');
+        const tabContentContainer = document.getElementById('tab-content-container');
+
+        function loadState() {
+            const savedState = localStorage.getItem('studyProgressState');
+            if (savedState) {
+                progressState = JSON.parse(savedState);
+                // Data migration for newly added tasks, if any
+                DAYS.forEach(day => {
+                    if (!progressState[day]) progressState[day] = {};
+                    TASKS.forEach(task => {
+                        if (progressState[day][task.id] === undefined) {
+                            progressState[day][task.id] = 0;
+                        }
+                    });
+                });
+
+            } else {
+                // Initialize a fresh state
+                DAYS.forEach(day => {
+                    progressState[day] = {};
+                    TASKS.forEach(task => {
+                        progressState[day][task.id] = 0;
+                    });
+                });
+            }
+        }
+
+        function saveState() {
+            localStorage.setItem('studyProgressState', JSON.stringify(progressState));
+        }
+
+        function render() {
+            // Clear existing content
+            tabContainer.innerHTML = '';
+            tabContentContainer.innerHTML = '';
+
+            DAYS.forEach((day, index) => {
+                const dayId = day.toLowerCase();
+                // Create Tab Button
+                const tabButton = document.createElement('button');
+                tabButton.id = `tab-btn-${dayId}`;
+                tabButton.setAttribute('role', 'tab');
+                tabButton.setAttribute('aria-controls', `tab-panel-${dayId}`);
+                tabButton.className = `tab-button px-4 py-3 text-sm md:text-base font-medium text-gray-400 hover:text-white rounded-t-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50`;
+                tabButton.textContent = day;
+                tabButton.dataset.target = `tab-panel-${dayId}`;
+                tabContainer.appendChild(tabButton);
+
+                // Create Tab Panel
+                const tabPanel = document.createElement('div');
+                tabPanel.id = `tab-panel-${dayId}`;
+                tabPanel.setAttribute('role', 'tabpanel');
+                tabPanel.className = 'hidden tab-content space-y-3';
+
+                // Create Progress Bars inside panel
+                const progressHTML = `
+                        <div class="space-y-4 mb-6 bg-gray-800/50 p-4 rounded-lg">
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-base font-medium text-cyan-400">Daily Progress (${day})</span>
+                                    <span id="daily-progress-text-${dayId}" class="text-sm font-medium text-cyan-400">0 / ${DAILY_TOTAL_GOAL}</span>
+                                </div>
+                                <div class="w-full bg-gray-700 rounded-full h-2.5">
+                                    <div id="daily-progress-bar-${dayId}" class="progress-bar-fill bg-cyan-500 h-2.5 rounded-full" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-base font-medium text-emerald-400">Overall Progress</span>
+                                    <span id="overall-progress-text-${dayId}" class="text-sm font-medium text-emerald-400">0 / ${OVERALL_TOTAL_GOAL}</span>
+                                </div>
+                                <div class="w-full bg-gray-700 rounded-full h-2.5">
+                                    <div id="overall-progress-bar-${dayId}" class="progress-bar-fill bg-emerald-500 h-2.5 rounded-full" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                tabPanel.innerHTML = progressHTML;
+
+                // Create Task Items
+                const tasksContainer = document.createElement('div');
+                tasksContainer.className = 'space-y-3';
+                TASKS.forEach((task, taskIndex) => {
+                    const taskTotalGoal = task.dailyGoal * DAYS.length;
+                    const taskItem = document.createElement('div');
+                    taskItem.className = 'task-item bg-gray-800 rounded-lg shadow-md p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4';
+                    taskItem.style.animationDelay = `${taskIndex * 50}ms`;
+                    taskItem.innerHTML = `
+                            <div class="w-full sm:w-auto flex-grow sm:pr-4">
+                                <div class="flex justify-between items-baseline mb-1">
+                                    <span class="font-semibold text-gray-300">${task.name}</span>
+                                    <span id="task-progress-text-${dayId}-${task.id}" class="text-xs font-medium text-gray-400">0 / ${taskTotalGoal}</span>
+                                </div>
+                                <div class="w-full bg-gray-700 rounded-full h-2">
+                                    <div id="task-progress-bar-${dayId}-${task.id}" class="progress-bar-fill bg-sky-500 h-2 rounded-full" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0 self-end sm:self-center">
+                                <button class="control-btn minus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-red-500 transition-colors flex items-center justify-center font-bold text-xl" data-day="${day}" data-task="${task.id}" data-change="-1">-</button>
+                                <input type="number" class="task-input w-16 text-center bg-gray-900 border border-gray-600 rounded-md h-8 focus:ring-2 focus:ring-sky-500 focus:border-sky-500" value="0" min="0" max="${task.dailyGoal}" data-day="${day}" data-task="${task.id}">
+                                <span class="text-gray-400 text-sm">/ ${task.dailyGoal}</span>
+                                <button class="control-btn plus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-green-500 transition-colors flex items-center justify-center font-bold text-xl" data-day="${day}" data-task="${task.id}" data-change="1">+</button>
+                            </div>
+                        `;
+                    tasksContainer.appendChild(taskItem);
+                });
+
+                tabPanel.appendChild(tasksContainer);
+                tabContentContainer.appendChild(tabPanel);
+            });
+        }
+
+        function updateUI() {
+            let overallCompleted = 0;
+            const taskTotals = {};
+            TASKS.forEach(task => taskTotals[task.id] = 0);
+
+            // First pass: Calculate daily totals and aggregate task totals
+            DAYS.forEach(day => {
+                let dailyCompleted = 0;
+                TASKS.forEach(task => {
+                    const value = progressState[day][task.id] || 0;
+                    const input = document.querySelector(`.task-input[data-day="${day}"][data-task="${task.id}"]`);
+                    if (input) input.value = value;
+
+                    dailyCompleted += value;
+                    taskTotals[task.id] += value;
+                });
+
+                overallCompleted += dailyCompleted;
+
+                // Update daily progress for this day
+                const dayId = day.toLowerCase();
+                const dailyPercent = DAILY_TOTAL_GOAL > 0 ? (dailyCompleted / DAILY_TOTAL_GOAL) * 100 : 0;
+                const dailyProgressBar = document.getElementById(`daily-progress-bar-${dayId}`);
+                const dailyProgressText = document.getElementById(`daily-progress-text-${dayId}`);
+                if (dailyProgressBar) dailyProgressBar.style.width = `${dailyPercent}%`;
+                if (dailyProgressText) dailyProgressText.textContent = `${dailyCompleted} / ${DAILY_TOTAL_GOAL}`;
+            });
+
+            const overallPercent = OVERALL_TOTAL_GOAL > 0 ? (overallCompleted / OVERALL_TOTAL_GOAL) * 100 : 0;
+
+            // Second pass: Update overall progress and individual task progress on all tabs
+            DAYS.forEach(day => {
+                const dayId = day.toLowerCase();
+
+                // Update overall progress bar for this tab
+                const overallProgressBar = document.getElementById(`overall-progress-bar-${dayId}`);
+                const overallProgressText = document.getElementById(`overall-progress-text-${dayId}`);
+                if (overallProgressBar) overallProgressBar.style.width = `${overallPercent}%`;
+                if (overallProgressText) overallProgressText.textContent = `${overallCompleted} / ${OVERALL_TOTAL_GOAL}`;
+
+                // Update individual task progress bars for this tab
+                TASKS.forEach(task => {
+                    const taskTotalCompleted = taskTotals[task.id];
+                    const taskTotalGoal = task.dailyGoal * DAYS.length;
+                    const taskPercent = taskTotalGoal > 0 ? (taskTotalCompleted / taskTotalGoal) * 100 : 0;
+
+                    const progressBar = document.getElementById(`task-progress-bar-${dayId}-${task.id}`);
+                    const progressText = document.getElementById(`task-progress-text-${dayId}-${task.id}`);
+                    if (progressBar) progressBar.style.width = `${taskPercent}%`;
+                    if (progressText) progressText.textContent = `${taskTotalCompleted} / ${taskTotalGoal}`;
+                });
+            });
+        }
+
+        function handleValueChange(day, taskId, newValue) {
+            const task = TASKS.find(t => t.id === taskId);
+            if (!task) return;
+
+            // Clamp the value between 0 and the daily goal
+            const value = Math.max(0, Math.min(task.dailyGoal, parseInt(newValue, 10) || 0));
+
+            if (progressState[day][taskId] !== value) {
+                progressState[day][taskId] = value;
+                saveState();
+                updateUI();
+            }
+        }
+
+        function attachEventListeners() {
+            tabContainer.addEventListener('click', (e) => {
+                const tabButton = e.target.closest('[role="tab"]');
+                if (tabButton) {
+                    document.querySelectorAll('[role="tab"]').forEach(btn => btn.classList.remove('active'));
+                    document.querySelectorAll('[role="tabpanel"]').forEach(panel => panel.classList.add('hidden'));
+
+                    tabButton.classList.add('active');
+                    const targetPanel = document.getElementById(tabButton.dataset.target);
+                    if (targetPanel) {
+                        targetPanel.classList.remove('hidden');
+                    }
+                }
+            });
+
+            tabContentContainer.addEventListener('input', (e) => {
+                if (e.target.classList.contains('task-input')) {
+                    const { day, task } = e.target.dataset;
+                    handleValueChange(day, task, e.target.value);
+                }
+            });
+
+            tabContentContainer.addEventListener('click', (e) => {
+                const controlBtn = e.target.closest('.control-btn');
+                if(controlBtn) {
+                    const { day, task, change } = controlBtn.dataset;
+                    const input = document.querySelector(`.task-input[data-day="${day}"][data-task="${task}"]`);
+                    if(input) {
+                        const currentValue = parseInt(input.value, 10) || 0;
+                        const newValue = currentValue + parseInt(change, 10);
+                        handleValueChange(day, task, newValue);
+                    }
+                }
+            });
+        }
+
+        function setActiveTab() {
+            const today = new Date();
+            // In case you're testing on a day outside Sat-Tue, let's find the first relevant day
+            const dayIndex = today.getDay(); // Sunday = 0, ... Saturday = 6
+
+            let activeDayName = DAYS[0]; // Default to Saturday
+            if (dayIndex === 0) activeDayName = "Sunday";
+            else if (dayIndex === 1) activeDayName = "Monday";
+            else if (dayIndex === 2) activeDayName = "Tuesday";
+            else if (dayIndex === 6) activeDayName = "Saturday";
+
+            const activeTabBtn = document.getElementById(`tab-btn-${activeDayName.toLowerCase()}`);
+
+            if (activeTabBtn) {
+                activeTabBtn.click();
+            } else {
+                // Fallback to the first tab if something goes wrong
+                document.querySelector('[role="tablist"] button')?.click();
+            }
+        }
+
+        // --- Initialization ---
+        loadState();
+        render();
+        updateUI();
+        attachEventListeners();
+        setActiveTab();
+    });
+</script>
+</body>
+</html>
+

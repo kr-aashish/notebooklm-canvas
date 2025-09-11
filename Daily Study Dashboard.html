@@ -1024,7 +1024,7 @@
             if (!titleElement.hasAttribute('contenteditable')) {
                 typeWriter(titleElement, title, () => {
                     typeWriter(subtitleElement, subtitle, () => {
-                        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                        // REMOVED: window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
                          // REMOVED footer typewriter
                     });
                 });

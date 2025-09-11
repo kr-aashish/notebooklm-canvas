@@ -30,6 +30,80 @@
         }
         .task-item, .add-task-form-container, .target-date-container { animation: fadeInSlideUp 0.6s ease-out forwards; }
         
+        /* --- Enhanced Netflix Hover Effect for Tasks (conflict-free) --- */
+        .task-item {
+            position: relative;
+            z-index: 1;               /* so we can raise it on hover */
+            isolation: isolate;       /* ensures z-index stacking behaves */
+        }
+
+        /* the visual card that we scale */
+        .task-item .task-card {
+            transition: transform 400ms cubic-bezier(0.25, 0.8, 0.25, 1),
+                        box-shadow 400ms cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform-origin: center;
+            will-change: transform;
+        }
+
+        .task-item:hover { 
+            z-index: 20; 
+        }
+
+        .task-item:hover .task-card {
+            /* Massive Netflix-style zoom taking almost full horizontal space */
+            transform: scale(1.6);
+            box-shadow: 
+                0 50px 100px rgba(0,0,0,0.5), 
+                0 25px 50px rgba(0,0,0,0.4),
+                0 0 0 1px rgba(255,255,255,0.1),
+                0 0 80px rgba(56, 189, 248, 0.2); /* sky-400 glow */
+        }
+
+        /* --- Scroll-Triggered Sequential Animations --- */
+        .task-item .task-card {
+            transition: transform 400ms cubic-bezier(0.25, 0.8, 0.25, 1),
+                        box-shadow 400ms cubic-bezier(0.25, 0.8, 0.25, 1),
+                        opacity 600ms ease-out;
+        }
+
+        /* Initial state for scroll animations */
+        .task-item.scroll-animate {
+            opacity: 1;
+        }
+
+        .task-item.scroll-animate .task-card {
+            transform: scale(0.95);
+            opacity: 0.7;
+        }
+
+        /* Scroll zoom-in animation */
+        .task-item.scroll-zoom-in .task-card {
+            transform: scale(1.08);
+            box-shadow: 
+                0 20px 40px rgba(0,0,0,0.3),
+                0 10px 20px rgba(0,0,0,0.2),
+                0 0 20px rgba(56, 189, 248, 0.15);
+            opacity: 1;
+        }
+
+        /* Scroll zoom-out animation (back to normal) */
+        .task-item.scroll-zoom-out .task-card {
+            transform: scale(1);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+            opacity: 1;
+        }
+
+        /* (Optional) accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            .task-item .task-card { transition: none !important; }
+            .task-item.scroll-animate .task-card,
+            .task-item.scroll-zoom-in .task-card,
+            .task-item.scroll-zoom-out .task-card { 
+                transform: none !important; 
+                opacity: 1 !important;
+            }
+        }
+        
         /* --- Progress Bar --- */
         .progress-bar-fill { 
             transition: width 0.5s ease-in-out; 
@@ -560,7 +634,7 @@
         
         function getSavedTexts() {
             const savedTitle = localStorage.getItem('studyTrackerTitle') || 'Study Progress Tracker';
-            const savedSubtitle = localStorage.getItem('studyTrackerSubtitle') || 'Your customizable study plan & progress tracker.';
+            const savedSubtitle = localStorage.getItem('studyTrackerSubtitle') || 'Your customizable study plan.';
             // REMOVED: savedFooter retrieval
             return { title: savedTitle, subtitle: savedSubtitle };
         }
@@ -598,42 +672,47 @@
             } else {
                 tasks.forEach((task, taskIndex) => {
                     const taskItem = document.createElement('div');
-                    taskItem.className = 'task-item bg-gray-800 rounded-lg shadow-md p-4 flex flex-col gap-4';
+                    taskItem.className = 'task-item'; // wrapper gets the animation
                     taskItem.style.animationDelay = `${taskIndex * 50}ms`;
-                    taskItem.innerHTML = `
-                        <div class="flex flex-col xl:flex-row items-start justify-between gap-4">
-                             <span class="font-semibold text-xl text-gray-200">${task.name}</span>
-                             <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0 self-end xl:self-center">
-                                <button class="control-btn remove-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-rose-600 transition-colors flex items-center justify-center" data-task="${task.id}" title="Remove Task"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                                <button class="control-btn minus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-red-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="-1" title="Increase remaining count">-</button>
-                                
-                                <div class="input-group">
-                                    <span class="text-gray-400 text-sm whitespace-nowrap pl-2">Remaining:</span>
-                                    <input type="number" class="task-input-remaining" value="0" min="0" data-task="${task.id}">
-                                    <span class="separator">/</span>
-                                    <input type="number" class="task-input-total" value="${task.totalGoal}" min="0" data-task="${task.id}">
-                                </div>
 
-                                <button class="control-btn plus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-green-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="1" title="Decrease remaining count">+</button>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="progress-display">
-                                <h4 class="font-semibold text-gray-300">Daily Progress</h4>
-                                <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-daily-${task.id}" class="progress-bar-fill progress-bar-daily" style="width: 0%"></div></div>
-                                <div class="progress-stats">
-                                    <div class="stat-item text-center"><div class="label">Completed</div><div id="daily-completed-${task.id}" class="value completed">0</div></div>
-                                    <div class="stat-item text-center"><div class="label">Remaining</div><div id="daily-remaining-${task.id}" class="value">0</div></div>
-                                    <div class="stat-item text-center"><div class="label">Total</div><div id="daily-total-${task.id}" class="value">0</div></div>
+                    // move your visual styles onto the inner ".task-card"
+                    taskItem.innerHTML = `
+                        <div class="task-card bg-gray-800 rounded-lg shadow-md p-4 flex flex-col gap-4">
+                            <div class="flex flex-col xl:flex-row items-start justify-between gap-4">
+                                <span class="font-semibold text-xl text-gray-200">${task.name}</span>
+                                <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0 self-end xl:self-center">
+                                    <button class="control-btn remove-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-rose-600 transition-colors flex items-center justify-center" data-task="${task.id}" title="Remove Task"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                                    <button class="control-btn minus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-red-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="-1" title="Increase remaining count">-</button>
+
+                                    <div class="input-group">
+                                        <span class="text-gray-400 text-sm whitespace-nowrap pl-2">Remaining:</span>
+                                        <input type="number" class="task-input-remaining" value="0" min="0" data-task="${task.id}">
+                                        <span class="separator">/</span>
+                                        <input type="number" class="task-input-total" value="${task.totalGoal}" min="0" data-task="${task.id}">
+                                    </div>
+
+                                    <button class="control-btn plus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-green-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="1" title="Decrease remaining count">+</button>
                                 </div>
                             </div>
-                            <div class="progress-display">
-                                <h4 class="font-semibold text-gray-300">Overall Progress</h4>
-                                <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-overall-${task.id}" class="progress-bar-fill progress-bar-overall" style="width: 0%"></div></div>
-                                <div class="progress-stats">
-                                    <div class="stat-item text-center"><div class="label">Completed</div><div id="overall-completed-${task.id}" class="value completed">0</div></div>
-                                    <div class="stat-item text-center"><div class="label">Remaining</div><div id="overall-remaining-${task.id}" class="value">0</div></div>
-                                    <div class="stat-item text-center"><div class="label">Total</div><div id="overall-total-${task.id}" class="value">${task.totalGoal}</div></div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="progress-display">
+                                    <h4 class="font-semibold text-gray-300">Daily Progress</h4>
+                                    <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-daily-${task.id}" class="progress-bar-fill progress-bar-daily" style="width: 0%"></div></div>
+                                    <div class="progress-stats">
+                                        <div class="stat-item text-center"><div class="label">Completed</div><div id="daily-completed-${task.id}" class="value completed">0</div></div>
+                                        <div class="stat-item text-center"><div class="label">Remaining</div><div id="daily-remaining-${task.id}" class="value">0</div></div>
+                                        <div class="stat-item text-center"><div class="label">Total</div><div id="daily-total-${task.id}" class="value">0</div></div>
+                                    </div>
+                                </div>
+                                <div class="progress-display">
+                                    <h4 class="font-semibold text-gray-300">Overall Progress</h4>
+                                    <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-overall-${task.id}" class="progress-bar-fill progress-bar-overall" style="width: 0%"></div></div>
+                                    <div class="progress-stats">
+                                        <div class="stat-item text-center"><div class="label">Completed</div><div id="overall-completed-${task.id}" class="value completed">0</div></div>
+                                        <div class="stat-item text-center"><div class="label">Remaining</div><div id="overall-remaining-${task.id}" class="value">0</div></div>
+                                        <div class="stat-item text-center"><div class="label">Total</div><div id="overall-total-${task.id}" class="value">${task.totalGoal}</div></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

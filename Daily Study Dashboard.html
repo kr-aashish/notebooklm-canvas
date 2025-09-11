@@ -73,6 +73,17 @@
             100% { clip-path: polygon(50% 50%, 0 0, 100% 0, 100% 100%, 0 100%, 0 0) }
         }
 
+        /* --- Typewriter Animation --- */
+        @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: #38bdf8; } /* sky-400 */
+        }
+        .typing-cursor {
+            border-right: .1em solid #38bdf8;
+            animation: blink-caret .75s step-end infinite;
+            white-space: nowrap; /* Keeps cursor at the end */
+        }
+
         /* --- Editable Content Styling --- */
         [contenteditable="true"]:hover {
             outline: 2px dashed #4b5563; /* Tailwind gray-600 */
@@ -89,10 +100,8 @@
 
 <div class="container mx-auto max-w-4xl p-4 sm:p-6 md:p-8">
     <header class="text-center mb-8">
-        <h1 contenteditable="true" class="text-4xl sm:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400 pb-2">
-            Study Progress Tracker
-        </h1>
-        <p contenteditable="true" class="text-gray-400 mt-2 text-lg">Your customizable study plan and progress tracker.</p>
+        <h1 class="text-4xl sm:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400 pb-2 min-h-[56px] sm:min-h-[72px]"></h1>
+        <p class="text-gray-400 mt-2 text-lg min-h-[28px]"></p>
     </header>
 
     <main id="main-content" class="space-y-3">
@@ -102,7 +111,7 @@
     </main>
 
     <footer class="text-center mt-12 text-gray-500 text-sm">
-        <p contenteditable="true">Happy studying!</p>
+        <p class="min-h-[20px]"></p>
     </footer>
 </div>
 
@@ -143,14 +152,11 @@
             syncAndValidateState();
         }
 
-        function loadTextFromLocal() {
-            const savedTitle = localStorage.getItem('studyTrackerTitle');
-            const savedSubtitle = localStorage.getItem('studyTrackerSubtitle');
-            const savedFooter = localStorage.getItem('studyTrackerFooter');
-
-            if (savedTitle) titleElement.innerHTML = savedTitle;
-            if (savedSubtitle) subtitleElement.innerHTML = savedSubtitle;
-            if (savedFooter) footerElement.innerHTML = savedFooter;
+        function getSavedTexts() {
+            const savedTitle = localStorage.getItem('studyTrackerTitle') || 'Study Progress Tracker';
+            const savedSubtitle = localStorage.getItem('studyTrackerSubtitle') || 'Your customizable study plan and progress tracker.';
+            const savedFooter = localStorage.getItem('studyTrackerFooter') || 'Happy studying!';
+            return { title: savedTitle, subtitle: savedSubtitle, footer: savedFooter };
         }
 
         function syncAndValidateState() {
@@ -340,21 +346,50 @@
                     }
                 }
             });
-
-            // Event listeners for editable text
-            titleElement.addEventListener('blur', saveTextState);
-            subtitleElement.addEventListener('blur', saveTextState);
-            footerElement.addEventListener('blur', saveTextState);
         }
         
-        function initializeAppUI() {
-            loadStateFromLocal();
-            loadTextFromLocal();
-            render();
-            attachEventListeners();
+        function typeWriter(element, text, callback) {
+            let i = 0;
+            const speed = 50; // Typing speed in ms
+            element.classList.add('typing-cursor');
+
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                    setTimeout(type, speed);
+                } else {
+                    element.classList.remove('typing-cursor');
+                    element.setAttribute('contenteditable', 'true');
+                    if (callback) callback();
+                }
+            }
+            type();
         }
 
+        function initializeAppUI() {
+            // Load task data
+            loadStateFromLocal();
+            // Render the main task area
+            render();
+            attachEventListeners();
+            
+            // Load text data and start animations
+            const { title, subtitle, footer } = getSavedTexts();
+
+            typeWriter(titleElement, title, () => {
+                typeWriter(subtitleElement, subtitle, () => {
+                    typeWriter(footerElement, footer, null);
+                });
+            });
+        }
+
+        // Event listeners for saving editable text
+        titleElement.addEventListener('blur', saveTextState);
+        subtitleElement.addEventListener('blur', saveTextState);
+        footerElement.addEventListener('blur', saveTextState);
     });
 </script>
 </body>
 </html>
+

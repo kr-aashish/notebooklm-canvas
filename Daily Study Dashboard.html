@@ -168,19 +168,44 @@
     </header>
     
     <main id="main-content" class="space-y-3">
-        <!-- Loader is displayed here initially -->
         <div class="loader"></div>
         <p class="text-center text-gray-400">Loading your tracker...</p>
     </main>
 
     <footer class="text-center mt-12 text-gray-500 text-sm">
         <p class="min-h-[20px]"></p>
+        
+        <div id="sync-container" class="mt-4 flex justify-center items-center gap-4">
+            <button id="pull-button" class="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 9.293a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+                Pull from Cloud
+            </button>
+            <button id="push-button" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                </svg>
+                Push to Cloud
+            </button>
+        </div>
+        <div id="sync-status" class="mt-2 text-xs text-gray-600 h-4"></div>
+        
     </footer>
 </div>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
 
+        // --- SYNC LOGIC ---: Configuration with your provided keys
+        const JSONBIN_API_KEY = "$2a$10$hbH6IPJ.X8Dmvjp.hgDXBOIxQ2iQ3WFkkTOub97qtWD6MYB2uqIV6";
+        const JSONBIN_BIN_ID = "68c28d42ae596e708feac8f0";
+
+        const FETCH_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`;
+        const UPSERT_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
+
+        let syncStatusElement;
+        
         let tasks = [];
         let progressState = {};
         let dailyProgressState = {};
@@ -196,6 +221,135 @@
         setTimeout(() => {
             initializeAppUI();
         }, 1000);
+
+        // --- SYNC LOGIC ---: ENDPOINT 1 - Manual Pull from Cloud
+        async function handlePullFromCloud() {
+            if ( !confirm("Are you sure you want to pull data from the cloud? This will overwrite your current local data.") ) {
+                return;
+            }
+
+            const pullButton = document.getElementById('pull-button');
+            pullButton.disabled = true;
+            pullButton.innerHTML = 'Pulling...';
+
+            try {
+                updateSyncStatus('Pulling from cloud...', '#6b7280');
+                const response = await fetch(FETCH_URL, {
+                    method: 'GET',
+                    headers: { 'X-Master-Key': JSONBIN_API_KEY }
+                });
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                
+                const data = await response.json();
+                const record = data.record || data;
+                if (Object.keys(record).length === 0) throw new Error("Bin is empty.");
+
+                // FIX: Overwrite local variables with cloud data using the correct keys from your JSON
+                targetDate = record.studyTargetDate ? new Date(record.studyTargetDate) : new Date();
+                tasks = record.studyTasks || [];
+                progressState = record.studyProgressState || {};
+                dailyProgressState = record.studyDailyProgressState || {};
+                
+                // Save this new state to localStorage
+                saveStateToLocal();
+                
+                // Save texts to localStorage
+                localStorage.setItem('studyTrackerTitle', record.studyTrackerTitle || 'Study Progress Tracker');
+                localStorage.setItem('studyTrackerSubtitle', record.studyTrackerSubtitle || 'Your customizable study plan & progress tracker.');
+                localStorage.setItem('studyTrackerFooter', record.studyTrackerFooter || 'Happy studying!');
+                saveTextStateToLocal();
+
+                updateSyncStatus('Pull successful ✓', '#10b981');
+                
+                // FIX: Re-render the UI smoothly without a page reload
+                mainContentContainer.style.transition = 'opacity 0.3s ease-out';
+                mainContentContainer.style.opacity = '0';
+                
+                setTimeout(() => {
+                    // Stop the countdown before re-rendering
+                    if (countdownInterval) clearInterval(countdownInterval);
+                    initializeAppUI();
+                    mainContentContainer.style.opacity = '1';
+                }, 300);
+
+
+            } catch (error) {
+                console.error("Failed to pull from cloud:", error);
+                updateSyncStatus(`Pull Error: ${error.message}`, '#ef4444');
+            } finally {
+                pullButton.disabled = false;
+                pullButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 9.293a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg> Pull from Cloud`;
+            }
+        }
+
+        // --- SYNC LOGIC ---: ENDPOINT 2 - Manual Push to Cloud
+        async function handlePushToCloud() {
+            // Package all current local data into one object
+            // FIX: Use the same keys as your JSONbin data for consistency
+            const dataToSync = {
+                studyTargetDate: targetDate.toISOString(),
+                studyTasks: tasks,
+                studyProgressState: progressState,
+                studyDailyProgressState: dailyProgressState,
+                studyTrackerTitle: titleElement.textContent,
+                studyTrackerSubtitle: subtitleElement.textContent,
+                studyTrackerFooter: footerElement.textContent
+            };
+
+            const pushButton = document.getElementById('push-button');
+            pushButton.disabled = true;
+            pushButton.innerHTML = 'Pushing...';
+
+            try {
+                updateSyncStatus('Pushing to cloud...', '#6b7280');
+                const response = await fetch(UPSERT_URL, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': JSONBIN_API_KEY
+                    },
+                    body: JSON.stringify(dataToSync)
+                });
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                
+                await response.json();
+                updateSyncStatus('Push successful ✓', '#10b981');
+            } catch (error)
+            {
+                console.error("Failed to push to cloud:", error);
+                updateSyncStatus(`Push Error: ${error.message}`, '#ef4444');
+            } finally {
+                 pushButton.disabled = false;
+                 pushButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg> Push to Cloud`;
+            }
+        }
+
+        function updateSyncStatus(message, color) {
+            if (!syncStatusElement) syncStatusElement = document.getElementById('sync-status');
+            if (syncStatusElement) {
+                syncStatusElement.textContent = message;
+                syncStatusElement.style.color = color;
+                // Clear the message after 5 seconds
+                setTimeout(() => {
+                    if (syncStatusElement.textContent === message) {
+                        syncStatusElement.textContent = '';
+                    }
+                }, 5000);
+            }
+        }
+
+        function saveStateToLocal() {
+            localStorage.setItem('studyTargetDate', targetDate.toISOString());
+            localStorage.setItem('studyTasks', JSON.stringify(tasks));
+            localStorage.setItem('studyProgressState', JSON.stringify(progressState));
+            localStorage.setItem('studyDailyProgressState', JSON.stringify(dailyProgressState));
+        }
+
+        function saveTextStateToLocal() {
+            localStorage.setItem('studyTrackerTitle', titleElement.textContent);
+            localStorage.setItem('studyTrackerSubtitle', subtitleElement.textContent);
+            localStorage.setItem('studyTrackerFooter', footerElement.textContent);
+        }
 
         function loadStateFromLocal() {
             const savedTargetDate = localStorage.getItem('studyTargetDate');
@@ -240,20 +394,7 @@
                 if (dailyProgressState[task.id] === undefined) dailyProgressState[task.id] = 0;
             });
         }
-
-        function saveState() {
-            localStorage.setItem('studyTargetDate', targetDate.toISOString());
-            localStorage.setItem('studyTasks', JSON.stringify(tasks));
-            localStorage.setItem('studyProgressState', JSON.stringify(progressState));
-            localStorage.setItem('studyDailyProgressState', JSON.stringify(dailyProgressState));
-        }
-
-        function saveTextState() {
-            localStorage.setItem('studyTrackerTitle', titleElement.textContent);
-            localStorage.setItem('studyTrackerSubtitle', subtitleElement.textContent);
-            localStorage.setItem('studyTrackerFooter', footerElement.textContent);
-        }
-
+        
         function render() {
             mainContentContainer.innerHTML = ''; 
 
@@ -343,7 +484,7 @@
 
             if (difference <= 0) {
                 timerElement.innerHTML = `<span class="text-2xl font-bold text-rose-500">Deadline Reached!</span>`;
-                return 0.001; // Return a small positive number to avoid division by zero
+                return 0.001;
             }
 
             const days = Math.floor(difference / (1000 * 60 * 60 * 24));
@@ -358,7 +499,7 @@
                 <div class="countdown-segment"><span class="countdown-number">${seconds}</span><span class="countdown-label">Seconds</span></div>
             `;
             
-            return difference / (1000 * 60 * 60 * 24); // Return total days remaining
+            return difference / (1000 * 60 * 60 * 24);
         }
 
         function updateUI() {
@@ -370,7 +511,7 @@
                 const totalCompleted = Number(progressState[task.id] || 0);
                 const todaysCompleted = Number(dailyProgressState[task.id] || 0);
                 const remaining = totalGoal - totalCompleted;
-                const dailyGoal = Math.ceil(totalGoal / durationInDays);
+                const dailyGoal = Math.ceil((totalGoal - totalCompleted) / durationInDays);
 
                 const overallPercent = totalGoal > 0 ? (totalCompleted / totalGoal) * 100 : 0;
                 const dailyPercent = dailyGoal > 0 ? (todaysCompleted / dailyGoal) * 100 : 0;
@@ -387,7 +528,7 @@
                 if(dailyBar) dailyBar.style.width = `${Math.min(100, dailyPercent)}%`;
                 if(overallBar) overallBar.style.width = `${Math.min(100, overallPercent)}%`;
                 if(progressText) progressText.textContent = `${totalCompleted} / ${totalGoal}`;
-                if(dailyProgressText) dailyProgressText.textContent = `${todaysCompleted} / ${dailyGoal}`;
+                if(dailyProgressText) dailyProgressText.textContent = `${todaysCompleted} / ${dailyGoal < 0 ? 0 : dailyGoal}`;
             });
         }
         
@@ -397,7 +538,7 @@
                     const newDate = new Date(e.target.value);
                     if (!isNaN(newDate.getTime())) {
                         targetDate = newDate;
-                        saveState();
+                        saveStateToLocal();
                         updateUI();
                     }
                     return;
@@ -429,7 +570,7 @@
                             }
                         }
                     }
-                    saveState();
+                    saveStateToLocal();
                     updateUI();
                 }
             });
@@ -446,12 +587,10 @@
                         const changeAmount = parseInt(change, 10);
                         const totalGoal = Number(task.totalGoal);
 
-                        // Update overall progress, clamped between 0 and totalGoal.
                         let currentCompleted = progressState[taskId] || 0;
                         let newCompleted = currentCompleted + changeAmount;
                         progressState[taskId] = Math.max(0, Math.min(newCompleted, totalGoal));
                         
-                        // Update daily progress continuously. Only clamp it at 0.
                         dailyProgressState[taskId] = (dailyProgressState[taskId] || 0) + changeAmount;
                         dailyProgressState[taskId] = Math.max(0, dailyProgressState[taskId]);
 
@@ -459,9 +598,9 @@
                         tasks = tasks.filter(t => t.id !== taskId);
                         delete progressState[taskId];
                         delete dailyProgressState[taskId];
-                        render(); // Re-render to remove the element
+                        render(); 
                     }
-                    saveState();
+                    saveStateToLocal();
                     updateUI();
                 }
             });
@@ -479,7 +618,7 @@
                         tasks.push(newTask);
                         progressState[newTask.id] = 0;
                         dailyProgressState[newTask.id] = 0;
-                        saveState();
+                        saveStateToLocal();
                         render();
                         nameInput.value = '';
                         goalInput.value = '';
@@ -487,6 +626,9 @@
                     }
                 }
             });
+            
+            document.getElementById('pull-button').addEventListener('click', handlePullFromCloud);
+            document.getElementById('push-button').addEventListener('click', handlePushToCloud);
         }
         
         function typeWriter(element, text, callback) {
@@ -510,14 +652,15 @@
         }
 
         function initializeAppUI() {
+            // Load from local storage on startup
             loadStateFromLocal();
+            // Clear the initial "Loading..." message and render the main content
+            mainContentContainer.innerHTML = ''; 
             render();
             attachEventListeners();
 
-            // Set the datetime-local input value correctly
             const dateInput = document.getElementById('target-date-input');
             if (dateInput) {
-                // Format the date for the input (YYYY-MM-DDTHH:mm)
                 const yyyy = targetDate.getFullYear();
                 const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
                 const dd = String(targetDate.getDate()).padStart(2, '0');
@@ -531,19 +674,25 @@
 
             const { title, subtitle, footer } = getSavedTexts();
 
-            typeWriter(titleElement, title, () => {
-                typeWriter(subtitleElement, subtitle, () => {
-                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-                    setTimeout(() => typeWriter(footerElement, footer, null), 800);
+            // Only run the typewriter animation on the very first load
+            if (!titleElement.hasAttribute('contenteditable')) {
+                typeWriter(titleElement, title, () => {
+                    typeWriter(subtitleElement, subtitle, () => {
+                        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                        setTimeout(() => typeWriter(footerElement, footer, null), 800);
+                    });
                 });
-            });
+            } else { // On re-renders (like after a pull), just set the text directly
+                titleElement.textContent = title;
+                subtitleElement.textContent = subtitle;
+                footerElement.textContent = footer;
+            }
         }
 
-        titleElement.addEventListener('blur', saveTextState);
-        subtitleElement.addEventListener('blur', saveTextState);
-        footerElement.addEventListener('blur', saveTextState);
+        titleElement.addEventListener('blur', saveTextStateToLocal);
+        subtitleElement.addEventListener('blur', saveTextStateToLocal);
+        footerElement.addEventListener('blur', saveTextStateToLocal);
     });
 </script>
 </body>
 </html>
-

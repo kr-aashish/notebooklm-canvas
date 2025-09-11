@@ -154,7 +154,7 @@
 
         function getSavedTexts() {
             const savedTitle = localStorage.getItem('studyTrackerTitle') || 'Study Progress Tracker';
-            const savedSubtitle = localStorage.getItem('studyTrackerSubtitle') || 'Your customizable study plan and progress tracker.';
+            const savedSubtitle = localStorage.getItem('studyTrackerSubtitle') || 'Your customizable study plan & progress tracker.';
             const savedFooter = localStorage.getItem('studyTrackerFooter') || 'Happy studying!';
             return { title: savedTitle, subtitle: savedSubtitle, footer: savedFooter };
         }
@@ -180,10 +180,10 @@
         }
 
         function saveTextState() {
-            // Save editable text to local cache
-            localStorage.setItem('studyTrackerTitle', titleElement.innerHTML);
-            localStorage.setItem('studyTrackerSubtitle', subtitleElement.innerHTML);
-            localStorage.setItem('studyTrackerFooter', footerElement.innerHTML);
+            // Save editable text content to local cache to prevent HTML entity issues
+            localStorage.setItem('studyTrackerTitle', titleElement.textContent);
+            localStorage.setItem('studyTrackerSubtitle', subtitleElement.textContent);
+            localStorage.setItem('studyTrackerFooter', footerElement.textContent);
         }
 
         function render() {
@@ -198,6 +198,7 @@
             } else {
                 tasks.forEach((task, taskIndex) => {
                     const taskTotalGoal = task.totalGoal;
+                    const taskCompleted = progressState[task.id] || 0;
                     const taskItem = document.createElement('div');
                     taskItem.className = 'task-item bg-gray-800 rounded-lg shadow-md p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4';
                     taskItem.style.animationDelay = `${taskIndex * 50}ms`;
@@ -205,7 +206,7 @@
                         <div class="w-full sm:w-auto flex-grow sm:pr-4">
                             <div class="flex justify-between items-baseline mb-1">
                                 <span class="font-semibold text-gray-300">${task.name}</span>
-                                <span id="task-progress-text-${task.id}" class="text-xs font-medium text-gray-400">0 / ${taskTotalGoal}</span>
+                                <span id="task-progress-text-${task.id}" class="text-xs font-medium text-gray-400">${taskCompleted} / ${taskTotalGoal}</span>
                             </div>
                             <div class="w-full bg-gray-700 rounded-full h-2">
                                 <div id="task-progress-bar-${task.id}" class="progress-bar-fill bg-sky-500 h-2 rounded-full" style="width: 0%"></div>
@@ -217,14 +218,14 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
                             </button>
-                            <button class="control-btn minus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-red-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="-1" title="Decrement items done">-</button>
+                            <button class="control-btn minus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-red-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="-1" title="Increase remaining count">-</button>
                             <div class="flex items-center space-x-1">
-                                 <span class="text-gray-400 text-sm whitespace-nowrap">Done:</span>
-                                 <input type="number" class="task-input-done w-14 text-center bg-gray-900 border border-gray-600 rounded-md h-8 focus:ring-2 focus:ring-sky-500 focus:border-sky-500" value="0" min="0" data-task="${task.id}">
+                                 <span class="text-gray-400 text-sm whitespace-nowrap">Remaining:</span>
+                                 <input type="number" class="task-input-remaining w-14 text-center bg-gray-900 border border-gray-600 rounded-md h-8 focus:ring-2 focus:ring-sky-500 focus:border-sky-500" value="0" min="0" data-task="${task.id}">
                                  <span class="text-gray-400">/</span>
                                  <input type="number" class="task-input-total w-14 text-center bg-gray-900 border border-gray-600 rounded-md h-8 focus:ring-2 focus:ring-sky-500 focus:border-sky-500" value="${taskTotalGoal}" min="0" data-task="${task.id}">
                             </div>
-                            <button class="control-btn plus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-green-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="1" title="Increment items done">+</button>
+                            <button class="control-btn plus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-green-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="1" title="Decrease remaining count">+</button>
                         </div>
                     `;
                     tasksContainer.appendChild(taskItem);
@@ -251,16 +252,17 @@
             tasks.forEach(task => {
                 const taskTotalGoal = Number(task.totalGoal);
                 const taskCompleted = Number(progressState[task.id] || 0);
+                const remaining = taskTotalGoal - taskCompleted;
                 const taskPercent = taskTotalGoal > 0 ? (taskCompleted / taskTotalGoal) * 100 : 0;
                 
-                const doneInput = document.querySelector(`.task-input-done[data-task="${task.id}"]`);
+                const remainingInput = document.querySelector(`.task-input-remaining[data-task="${task.id}"]`);
                 const totalInput = document.querySelector(`.task-input-total[data-task="${task.id}"]`);
                 const progressBar = document.getElementById(`task-progress-bar-${task.id}`);
                 const progressText = document.getElementById(`task-progress-text-${task.id}`);
 
-                if(doneInput) {
-                    doneInput.value = taskCompleted;
-                    doneInput.max = taskTotalGoal;
+                if(remainingInput) {
+                    remainingInput.value = remaining;
+                    remainingInput.max = taskTotalGoal;
                 }
                 if(totalInput) totalInput.value = taskTotalGoal;
                 if(progressBar) progressBar.style.width = `${taskPercent}%`;
@@ -275,10 +277,11 @@
                 const task = tasks.find(t => t.id === taskId);
                 if (!task) return;
 
-                if (e.target.classList.contains('task-input-done')) {
-                    const doneValue = parseInt(e.target.value, 10);
-                    if (!isNaN(doneValue)) {
+                if (e.target.classList.contains('task-input-remaining')) {
+                    const remainingValue = parseInt(e.target.value, 10);
+                    if (!isNaN(remainingValue)) {
                         const taskTotalGoal = Number(task.totalGoal);
+                        const doneValue = taskTotalGoal - remainingValue;
                         progressState[taskId] = Math.max(0, Math.min(doneValue, taskTotalGoal));
                         saveState();
                         updateUI();
@@ -392,4 +395,3 @@
 </script>
 </body>
 </html>
-

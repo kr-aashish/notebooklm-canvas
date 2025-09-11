@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Study Progress Tracker</title>
-    <link rel="icon" type="image/png" href="https://us1.discourse-cdn.com/flex002/uploads/anki2/original/2X/2/24bfef76259176f6f6e369b588d07f614d6d631c.png">
+    <link rel="icon" type="image/png" href="https://jira-frontend-bifrost.prod-east.frontend.public.atl-paas.net/assets/favicon-temp-family.656d6159.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,7 +28,7 @@
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .task-item, .add-task-form-container, .target-date-container { animation: fadeInSlideUp 0.5s ease-out forwards; }
+        .task-item, .add-task-form-container, .target-date-container { animation: fadeInSlideUp 0.6s ease-out forwards; }
         
         /* --- Progress Bar --- */
         .progress-bar-fill { 
@@ -272,6 +272,63 @@
             font-weight: 700;
             line-height: 1.1;
         }
+
+        /* --- Glossy Animated Card --- */
+        @keyframes subtle-shimmer {
+            0% { transform: translateX(-100%) skewX(-15deg); }
+            100% { transform: translateX(200%) skewX(-15deg); }
+        }
+
+        .glossy-jira-card {
+            background: linear-gradient(145deg, #374151, #1f2937); /* gray-700 to gray-800 */
+            border: 1px solid #4b5563;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2), inset 0 1px 1px rgba(255,255,255,0.05);
+            position: relative;
+            overflow: hidden;
+            /* UPDATED: Set initial state for scroll animation */
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+
+        /* NEW: Class to trigger the animation */
+        .glossy-jira-card.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .glossy-jira-card:hover {
+            transform: translateY(-5px) scale(1.01);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.3), 0 0 20px rgba(56, 189, 248, 0.3), inset 0 1px 1px rgba(255,255,255,0.05);
+        }
+
+        .glossy-jira-card .shimmer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(to right, transparent 0%, rgba(255, 255, 255, 0.08) 50%, transparent 100%);
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+        }
+        
+        .glossy-jira-card:hover .shimmer {
+            opacity: 1;
+            animation: subtle-shimmer 2.5s infinite linear;
+        }
+
+        .glossy-jira-card .button-shine {
+            background-image: linear-gradient(to right, #0ea5e9 0%, #22d3ee 51%, #0ea5e9 100%); /* sky-500 to cyan-400 */
+            background-size: 200% auto;
+            transition: background-position 0.5s, transform 0.2s;
+        }
+
+        .glossy-jira-card .button-shine:hover {
+            background-position: right center;
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body class="text-gray-200 antialiased">
@@ -283,13 +340,33 @@
     </header>
     
     <main id="main-content" class="space-y-3">
-        <!-- Loader is displayed here initially -->
         <div class="loader"></div>
         <p class="text-center text-gray-400">Loading your tracker...</p>
     </main>
 
     <footer class="text-center mt-12 text-gray-500 text-sm">
-        <p class="min-h-[20px]"></p>
+        
+        <div class="glossy-jira-card rounded-xl p-5 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+            <div class="shimmer"></div>
+            <div class="flex items-center gap-4">
+                <div class="flex-shrink-0 bg-gray-900/50 p-3 rounded-full border border-gray-600">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                     </svg>
+                </div>
+                <div class="text-left">
+                    <h3 class="font-bold text-lg text-gray-100">Overall Project Plan</h3>
+                    <p class="text-sm text-gray-400">View the project timeline and epic tracking on Jira.</p>
+                </div>
+            </div>
+            <a href="https://aashish-kumar.atlassian.net/jira/software/projects/OBS/boards/1/timeline" target="_blank" rel="noopener noreferrer" class="flex-shrink-0 w-full sm:w-auto flex items-center justify-center gap-2 button-shine text-white font-semibold py-2 px-5 rounded-lg shadow-lg whitespace-nowrap">
+                View Timeline
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                    <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                </svg>
+            </a>
+        </div>
         
         <div id="sync-container" class="mt-4 flex justify-center items-center gap-4" style="display: none;">
             <button id="pull-button" class="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
@@ -329,7 +406,7 @@
         const mainContentContainer = document.getElementById('main-content');
         const titleElement = document.querySelector('header h1');
         const subtitleElement = document.querySelector('header p');
-        const footerElement = document.querySelector('footer p');
+        // REMOVED: footerElement constant
 
         async function initialLoad() {
             const isLocalStorageEmpty = !localStorage.getItem('studyTasks');
@@ -368,7 +445,7 @@
                 localStorage.setItem('studyDailyProgressState', JSON.stringify(record.studyDailyProgressState || {}));
                 localStorage.setItem('studyTrackerTitle', record.studyTrackerTitle || 'Study Progress Tracker');
                 localStorage.setItem('studyTrackerSubtitle', record.studyTrackerSubtitle || 'Your customizable study plan.');
-                localStorage.setItem('studyTrackerFooter', record.studyTrackerFooter || 'Happy studying!');
+                // REMOVED: studyTrackerFooter from local storage saving
                 
                 loadStateFromLocal();
                 updateSyncStatus('Pull successful ✓', '#10b981');
@@ -403,8 +480,8 @@
                 studyProgressState: JSON.parse(localStorage.getItem('studyProgressState') || '{}'),
                 studyDailyProgressState: JSON.parse(localStorage.getItem('studyDailyProgressState') || '{}'),
                 studyTrackerTitle: localStorage.getItem('studyTrackerTitle'),
-                studyTrackerSubtitle: localStorage.getItem('studyTrackerSubtitle'),
-                studyTrackerFooter: localStorage.getItem('studyTrackerFooter')
+                studyTrackerSubtitle: localStorage.getItem('studyTrackerSubtitle')
+                // REMOVED: studyTrackerFooter from data push
             };
 
             const pushButton = document.getElementById('push-button');
@@ -455,7 +532,7 @@
         function saveTextStateToLocal() {
             localStorage.setItem('studyTrackerTitle', titleElement.textContent);
             localStorage.setItem('studyTrackerSubtitle', subtitleElement.textContent);
-            localStorage.setItem('studyTrackerFooter', footerElement.textContent);
+            // REMOVED: footerElement saving
         }
 
         function loadStateFromLocal() {
@@ -484,8 +561,8 @@
         function getSavedTexts() {
             const savedTitle = localStorage.getItem('studyTrackerTitle') || 'Study Progress Tracker';
             const savedSubtitle = localStorage.getItem('studyTrackerSubtitle') || 'Your customizable study plan & progress tracker.';
-            const savedFooter = localStorage.getItem('studyTrackerFooter') || 'Happy studying!';
-            return { title: savedTitle, subtitle: savedSubtitle, footer: savedFooter };
+            // REMOVED: savedFooter retrieval
+            return { title: savedTitle, subtitle: savedSubtitle };
         }
 
         function syncAndValidateState() {
@@ -541,7 +618,6 @@
                             </div>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <!-- Daily Progress -->
                             <div class="progress-display">
                                 <h4 class="font-semibold text-gray-300">Daily Progress</h4>
                                 <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-daily-${task.id}" class="progress-bar-fill progress-bar-daily" style="width: 0%"></div></div>
@@ -551,7 +627,6 @@
                                     <div class="stat-item text-center"><div class="label">Total</div><div id="daily-total-${task.id}" class="value">0</div></div>
                                 </div>
                             </div>
-                            <!-- Overall Progress -->
                             <div class="progress-display">
                                 <h4 class="font-semibold text-gray-300">Overall Progress</h4>
                                 <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-overall-${task.id}" class="progress-bar-fill progress-bar-overall" style="width: 0%"></div></div>
@@ -824,28 +899,43 @@
 
             if (countdownInterval) clearInterval(countdownInterval);
             countdownInterval = setInterval(updateUI, 1000);
-            const { title, subtitle, footer } = getSavedTexts();
+            const { title, subtitle } = getSavedTexts(); // REMOVED footer
             if (!titleElement.hasAttribute('contenteditable')) {
                 typeWriter(titleElement, title, () => {
                     typeWriter(subtitleElement, subtitle, () => {
                         window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-                        setTimeout(() => typeWriter(footerElement, footer, null), 800);
+                         // REMOVED footer typewriter
                     });
                 });
             } else {
                 titleElement.textContent = title;
                 subtitleElement.textContent = subtitle;
-                footerElement.textContent = footer;
+                // REMOVED footer text setting
             }
         }
 
         titleElement.addEventListener('blur', saveTextStateToLocal);
         subtitleElement.addEventListener('blur', saveTextStateToLocal);
-        footerElement.addEventListener('blur', saveTextStateToLocal);
+        // REMOVED: footerElement event listener
 
         initialLoad();
+
+        // --- NEW: Intersection Observer for beautiful scroll animation ---
+        const jiraCard = document.querySelector('.glossy-jira-card');
+        if (jiraCard) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('is-visible');
+                        observer.unobserve(entry.target); // Stop observing once it's visible
+                    }
+                });
+            }, {
+                threshold: 0.2 // Trigger when 20% of the element is visible
+            });
+            observer.observe(jiraCard);
+        }
     });
 </script>
 </body>
 </html>
-

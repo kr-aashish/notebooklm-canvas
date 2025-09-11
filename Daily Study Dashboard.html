@@ -28,7 +28,7 @@
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .task-item, .add-task-form-container, .duration-container-new { animation: fadeInSlideUp 0.5s ease-out forwards; }
+        .task-item, .add-task-form-container, .target-date-container { animation: fadeInSlideUp 0.5s ease-out forwards; }
         
         /* --- Progress Bar --- */
         .progress-bar-fill { 
@@ -43,13 +43,17 @@
             background-image: linear-gradient(to right, #34d399, #38bdf8); /* Emerald-400 to Sky-400 */
         }
         
-        /* --- Number Input Customization --- */
+        /* --- Number & DateTime Input Customization --- */
         input[type=number]::-webkit-inner-spin-button,
         input[type=number]::-webkit-outer-spin-button {
             -webkit-appearance: none;
             margin: 0;
         }
         input[type=number] { -moz-appearance: textfield; }
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.8);
+            cursor: pointer;
+        }
 
         /* --- Beautiful Loading Spinner --- */
         .loader {
@@ -108,65 +112,50 @@
             border-radius: 4px;
         }
 
-        /* --- Beautiful Duration Input Styling --- */
-        .duration-container-new {
-            background: #1f2937; /* gray-800 */
+        /* --- Beautiful Target Date Styling --- */
+        .target-date-container {
+            background: #1f2937;
             border-radius: 0.5rem;
-            padding: 1rem 1.5rem;
+            padding: 1.25rem;
             margin-top: 1.5rem;
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .duration-label {
-            font-size: 1.125rem; /* text-lg */
-            font-weight: 600; /* font-semibold */
-            color: #d1d5db; /* gray-300 */
-        }
-        .duration-controls {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem; /* space-x-3 */
-        }
-        .duration-btn {
-            width: 2.5rem; /* w-10 */
-            height: 2.5rem; /* h-10 */
-            border-radius: 9999px; /* rounded-full */
-            background-color: #374151; /* bg-gray-700 */
-            color: #e5e7eb; /* text-gray-200 */
-            font-size: 1.5rem; /* text-2xl */
-            font-weight: 700; /* font-bold */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease-in-out;
-            box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1);
-        }
-        .duration-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
-        }
-        .duration-btn.minus:hover {
-            background-image: linear-gradient(to right, #f43f5e, #be123c); /* rose-500 to rose-700 */
-        }
-        .duration-btn.plus:hover {
-            background-image: linear-gradient(to right, #10b981, #047857); /* emerald-500 to emerald-700 */
-        }
-        #duration-days-input {
-            width: 5rem; /* w-20 */
-            height: 2.5rem; /* h-10 */
-            background-color: #111827; /* bg-gray-900 */
-            border: 1px solid #4b5563; /* border-gray-600 */
-            border-radius: 0.375rem; /* rounded-md */
             text-align: center;
-            font-size: 1.25rem; /* text-xl */
-            font-weight: 600;
         }
-        #duration-days-input:focus {
-            outline: none;
-            border-color: #34d399; /* emerald-400 */
-            box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.3);
+        #target-date-input {
+            background-color: #111827;
+            border: 1px solid #4b5563;
+            border-radius: 0.375rem;
+            padding: 0.5rem 0.75rem;
+            color: #e5e7eb;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        #countdown-timer {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            background-image: linear-gradient(to right, #10b981, #34d399);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .countdown-segment {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .countdown-number {
+            font-size: 2.25rem; /* text-4xl */
+            font-weight: 700; /* font-bold */
+            line-height: 1;
+        }
+        .countdown-label {
+            font-size: 0.75rem; /* text-xs */
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #9ca3af; /* gray-400 */
         }
     </style>
 </head>
@@ -195,7 +184,8 @@
         let tasks = [];
         let progressState = {};
         let dailyProgressState = {};
-        let durationInDays = 7;
+        let targetDate = new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000); // Default to 7 days from now
+        let countdownInterval = null;
 
         const mainContentContainer = document.getElementById('main-content');
         const titleElement = document.querySelector('header h1');
@@ -208,7 +198,8 @@
         }, 1000);
 
         function loadStateFromLocal() {
-            durationInDays = parseInt(localStorage.getItem('studyDurationDays') || '7', 10);
+            const savedTargetDate = localStorage.getItem('studyTargetDate');
+            targetDate = savedTargetDate ? new Date(savedTargetDate) : new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
             
             const savedTasks = localStorage.getItem('studyTasks');
             tasks = savedTasks ? JSON.parse(savedTasks) : [];
@@ -216,7 +207,6 @@
             const savedProgress = localStorage.getItem('studyProgressState');
             progressState = savedProgress ? JSON.parse(savedProgress) : {};
             
-            // Handle daily progress reset
             const lastVisitDate = localStorage.getItem('studyLastVisitDate');
             const todayDate = new Date().toLocaleDateString();
             if (lastVisitDate === todayDate) {
@@ -240,14 +230,10 @@
         function syncAndValidateState() {
             const taskIds = new Set(tasks.map(t => t.id));
             Object.keys(progressState).forEach(id => {
-                if (!taskIds.has(id)) {
-                    delete progressState[id]; 
-                }
+                if (!taskIds.has(id)) delete progressState[id];
             });
              Object.keys(dailyProgressState).forEach(id => {
-                if (!taskIds.has(id)) {
-                    delete dailyProgressState[id]; 
-                }
+                if (!taskIds.has(id)) delete dailyProgressState[id];
             });
             tasks.forEach(task => {
                 if (progressState[task.id] === undefined) progressState[task.id] = 0;
@@ -256,7 +242,7 @@
         }
 
         function saveState() {
-            localStorage.setItem('studyDurationDays', durationInDays);
+            localStorage.setItem('studyTargetDate', targetDate.toISOString());
             localStorage.setItem('studyTasks', JSON.stringify(tasks));
             localStorage.setItem('studyProgressState', JSON.stringify(progressState));
             localStorage.setItem('studyDailyProgressState', JSON.stringify(dailyProgressState));
@@ -336,20 +322,46 @@
             `);
 
              mainContentContainer.insertAdjacentHTML('beforeend', `
-                <div class="duration-container-new">
-                    <span class="duration-label">Total Study Duration</span>
-                    <div class="duration-controls">
-                        <button id="duration-minus-btn" class="duration-btn minus">-</button>
-                        <input type="number" id="duration-days-input" value="${durationInDays}" min="1">
-                        <span class="text-lg text-gray-400">days</span>
-                        <button id="duration-plus-btn" class="duration-btn plus">+</button>
-                    </div>
+                <div class="target-date-container">
+                    <label for="target-date-input" class="block text-lg font-semibold text-gray-300 mb-3">Set Target Deadline</label>
+                    <input type="datetime-local" id="target-date-input">
+                    <div id="countdown-timer"></div>
                 </div>
             `);
             updateUI();
         }
 
+        function updateCountdown() {
+            const timerElement = document.getElementById('countdown-timer');
+            if (!timerElement) return 1;
+
+            const now = new Date();
+            const difference = targetDate.getTime() - now.getTime();
+
+            if (difference <= 0) {
+                timerElement.innerHTML = `<span class="text-2xl font-bold text-rose-500">Deadline Reached!</span>`;
+                return 0.001; // Return a small positive number to avoid division by zero
+            }
+
+            const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+            timerElement.innerHTML = `
+                <div class="countdown-segment"><span class="countdown-number">${days}</span><span class="countdown-label">Days</span></div>
+                <div class="countdown-segment"><span class="countdown-number">${hours}</span><span class="countdown-label">Hours</span></div>
+                <div class="countdown-segment"><span class="countdown-number">${minutes}</span><span class="countdown-label">Minutes</span></div>
+                <div class="countdown-segment"><span class="countdown-number">${seconds}</span><span class="countdown-label">Seconds</span></div>
+            `;
+            
+            return difference / (1000 * 60 * 60 * 24); // Return total days remaining
+        }
+
         function updateUI() {
+            const daysRemaining = updateCountdown();
+            const durationInDays = Math.max(1, daysRemaining);
+
             tasks.forEach(task => {
                 const totalGoal = Number(task.totalGoal);
                 const totalCompleted = Number(progressState[task.id] || 0);
@@ -376,6 +388,16 @@
         
         function attachEventListeners() {
             mainContentContainer.addEventListener('input', (e) => {
+                if (e.target.id === 'target-date-input') {
+                    const newDate = new Date(e.target.value);
+                    if (!isNaN(newDate.getTime())) {
+                        targetDate = newDate;
+                        saveState();
+                        updateUI();
+                    }
+                    return;
+                }
+
                 const taskId = e.target.dataset.task;
                 if (taskId) {
                     const task = tasks.find(t => t.id === taskId);
@@ -393,9 +415,7 @@
                             progressState[taskId] = newCompleted;
                             dailyProgressState[taskId] = (dailyProgressState[taskId] || 0) + delta;
                         }
-                    }
-
-                    if (e.target.classList.contains('task-input-total')) {
+                    } else if (e.target.classList.contains('task-input-total')) {
                         const newTotalGoal = parseInt(e.target.value, 10);
                         if (!isNaN(newTotalGoal) && newTotalGoal >= 0) {
                             task.totalGoal = newTotalGoal;
@@ -406,19 +426,11 @@
                     }
                     saveState();
                     updateUI();
-                } else if (e.target.id === 'duration-days-input') {
-                    const value = parseInt(e.target.value, 10);
-                    if (!isNaN(value) && value > 0) {
-                        durationInDays = value;
-                        saveState();
-                        updateUI();
-                    }
                 }
             });
 
             mainContentContainer.addEventListener('click', (e) => {
                 const controlBtn = e.target.closest('.control-btn');
-                const durationBtn = e.target.closest('.duration-btn');
 
                 if (controlBtn) {
                     const { task: taskId, change } = controlBtn.dataset;
@@ -443,15 +455,6 @@
                     }
                     saveState();
                     updateUI();
-                } else if (durationBtn) {
-                     const change = durationBtn.id === 'duration-minus-btn' ? -1 : 1;
-                    const newValue = durationInDays + change;
-                    if (newValue > 0) {
-                        durationInDays = newValue;
-                        document.getElementById('duration-days-input').value = durationInDays;
-                        saveState();
-                        updateUI();
-                    }
                 }
             });
 
@@ -502,7 +505,22 @@
             loadStateFromLocal();
             render();
             attachEventListeners();
+
+            // Set the datetime-local input value correctly
+            const dateInput = document.getElementById('target-date-input');
+            if (dateInput) {
+                // Format the date for the input (YYYY-MM-DDTHH:mm)
+                const yyyy = targetDate.getFullYear();
+                const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(targetDate.getDate()).padStart(2, '0');
+                const hh = String(targetDate.getHours()).padStart(2, '0');
+                const min = String(targetDate.getMinutes()).padStart(2, '0');
+                dateInput.value = `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+            }
             
+            if (countdownInterval) clearInterval(countdownInterval);
+            countdownInterval = setInterval(updateUI, 1000);
+
             const { title, subtitle, footer } = getSavedTexts();
 
             typeWriter(titleElement, title, () => {

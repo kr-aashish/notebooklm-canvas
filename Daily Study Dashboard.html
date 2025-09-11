@@ -115,6 +115,9 @@
         let progressState = {};
 
         const mainContentContainer = document.getElementById('main-content');
+        const titleElement = document.querySelector('header h1');
+        const subtitleElement = document.querySelector('header p');
+        const footerElement = document.querySelector('footer p');
         
         // --- App Initialization ---
         // Show loader for 1 second, then initialize the main application UI
@@ -140,6 +143,16 @@
             syncAndValidateState();
         }
 
+        function loadTextFromLocal() {
+            const savedTitle = localStorage.getItem('studyTrackerTitle');
+            const savedSubtitle = localStorage.getItem('studyTrackerSubtitle');
+            const savedFooter = localStorage.getItem('studyTrackerFooter');
+
+            if (savedTitle) titleElement.innerHTML = savedTitle;
+            if (savedSubtitle) subtitleElement.innerHTML = savedSubtitle;
+            if (savedFooter) footerElement.innerHTML = savedFooter;
+        }
+
         function syncAndValidateState() {
             const taskIds = tasks.map(t => t.id);
             Object.keys(progressState).forEach(id => {
@@ -155,9 +168,16 @@
         }
 
         function saveState() {
-            // Save to local cache immediately
+            // Save task data to local cache immediately
             localStorage.setItem('studyTasks', JSON.stringify(tasks));
             localStorage.setItem('studyProgressState', JSON.stringify(progressState));
+        }
+
+        function saveTextState() {
+            // Save editable text to local cache
+            localStorage.setItem('studyTrackerTitle', titleElement.innerHTML);
+            localStorage.setItem('studyTrackerSubtitle', subtitleElement.innerHTML);
+            localStorage.setItem('studyTrackerFooter', footerElement.innerHTML);
         }
 
         function render() {
@@ -243,6 +263,7 @@
         }
         
         function attachEventListeners() {
+            // Event listeners for task interactions
             mainContentContainer.addEventListener('input', (e) => {
                 const taskId = e.target.dataset.task;
                 const task = tasks.find(t => t.id === taskId);
@@ -319,10 +340,16 @@
                     }
                 }
             });
+
+            // Event listeners for editable text
+            titleElement.addEventListener('blur', saveTextState);
+            subtitleElement.addEventListener('blur', saveTextState);
+            footerElement.addEventListener('blur', saveTextState);
         }
         
         function initializeAppUI() {
             loadStateFromLocal();
+            loadTextFromLocal();
             render();
             attachEventListeners();
         }

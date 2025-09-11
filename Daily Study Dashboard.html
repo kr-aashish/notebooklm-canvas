@@ -59,6 +59,25 @@
                 0 0 80px rgba(56, 189, 248, 0.2); /* sky-400 glow */
         }
 
+        /* --- Hover Backdrop --- */
+        #hover-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 50% 50%, rgba(29, 78, 216, 0.15) 0%, rgba(17, 24, 39, 0) 70%);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px); /* Safari support */
+            opacity: 0;
+            z-index: 15; /* between normal content (1) and hovered card (20) */
+            pointer-events: none;
+            transition: opacity 400ms cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        #hover-backdrop.visible {
+            opacity: 1;
+        }
+
         /* --- Scroll-Triggered Sequential Animations --- */
         .task-item .task-card {
             transition: transform 400ms cubic-bezier(0.25, 0.8, 0.25, 1),
@@ -407,6 +426,8 @@
 </head>
 <body class="text-gray-200 antialiased">
 
+<div id="hover-backdrop"></div>
+
 <div class="container mx-auto max-w-4xl p-4 sm:p-6 md:p-8">
     <header class="text-center mb-8">
         <h1 class="text-4xl sm:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400 pb-2 min-h-[56px] sm:min-h-[72px]"></h1>
@@ -418,7 +439,7 @@
         <p class="text-center text-gray-400">Loading your tracker...</p>
     </main>
 
-    <footer class="text-center mt-12 text-gray-500 text-sm">
+    <footer class="text-center mt-6 text-gray-500 text-sm">
         
         <div class="glossy-jira-card rounded-xl p-5 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
             <div class="shimmer"></div>
@@ -839,6 +860,7 @@
         }
         
         function attachEventListeners() {
+            // Event delegation for date inputs, task value inputs, and control buttons
             mainContentContainer.addEventListener('input', e => {
                 if (e.target.id === 'start-date-input' || e.target.id === 'target-date-input') {
                     if (e.target.id === 'start-date-input') {
@@ -933,7 +955,27 @@
                     }
                 }
             });
+
+            // NEW: Event listeners for the hover backdrop effect
+            const backdrop = document.getElementById('hover-backdrop');
+            if (mainContentContainer && backdrop) {
+                mainContentContainer.addEventListener('mouseover', (e) => {
+                    if (e.target.closest('.task-item')) {
+                        backdrop.classList.add('visible');
+                    }
+                });
+
+                mainContentContainer.addEventListener('mouseout', (e) => {
+                    // Check if the element we are moving to is still within the same task item.
+                    // This prevents flickering when moving between child elements.
+                    const taskItem = e.target.closest('.task-item');
+                    if (taskItem && !taskItem.contains(e.relatedTarget)) {
+                        backdrop.classList.remove('visible');
+                    }
+                });
+            }
             
+            // Listeners for cloud sync buttons
             document.getElementById('pull-button').addEventListener('click', () => handlePullFromCloud(true));
             document.getElementById('push-button').addEventListener('click', handlePushToCloud);
         }

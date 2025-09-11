@@ -144,7 +144,10 @@
             -webkit-appearance: none;
             margin: 0;
         }
-        input[type=number] { -moz-appearance: textfield; }
+        input[type=number] { 
+            -moz-appearance: textfield; 
+            appearance: textfield; 
+        }
         input[type="datetime-local"]::-webkit-calendar-picker-indicator {
             filter: invert(0.8);
             cursor: pointer;
@@ -423,6 +426,251 @@
         .glossy-jira-card .button-shine:hover {
             background-position: right center;
             transform: scale(1.05);
+        }
+
+        /* --- RESPONSIVE DESIGN FOR MOBILE/TABLET --- */
+        
+        /* Mobile-first approach - Small screens (up to 640px) */
+        @media (max-width: 640px) {
+            /* Header adjustments */
+            .container {
+                padding: 1rem !important;
+            }
+            
+            /* Reduce header text size on mobile */
+            header h1 {
+                font-size: 2.5rem !important; /* Instead of text-4xl/5xl */
+                line-height: 1.2 !important;
+                min-height: 48px !important;
+            }
+            
+            header p {
+                font-size: 1rem !important;
+                margin-top: 0.5rem !important;
+            }
+            
+            /* Task cards - stack elements vertically */
+            .task-item .task-card {
+                padding: 1rem !important;
+            }
+            
+            /* Task header - force vertical stacking */
+            .task-item .task-card .flex.flex-col.xl\\:flex-row {
+                gap: 1rem !important;
+            }
+            
+            /* Controls container */
+            .task-item .flex.items-center.space-x-2 {
+                flex-wrap: wrap !important;
+                gap: 0.5rem !important;
+                justify-content: center !important;
+                margin: 0 !important;
+            }
+            
+            /* Make buttons larger for touch */
+            .control-btn {
+                width: 2.5rem !important;
+                height: 2.5rem !important;
+                min-width: 2.5rem !important;
+            }
+            
+            /* Input group adjustments */
+            .input-group {
+                padding: 0.25rem 0.5rem !important;
+                min-width: 200px !important;
+            }
+            
+            .input-group input {
+                width: 3rem !important;
+                height: 2rem !important;
+                font-size: 0.875rem !important;
+            }
+            
+            /* Progress displays - stack on mobile */
+            .grid.grid-cols-1.md\\:grid-cols-2 {
+                grid-template-columns: 1fr !important;
+            }
+            
+            /* Progress stats - smaller text */
+            .progress-stats {
+                font-size: 0.75rem !important;
+                gap: 0.5rem !important;
+            }
+            
+            .stat-item .value {
+                font-size: 0.875rem !important;
+            }
+            
+            /* Add task form - stack vertically */
+            .add-task-form-container form {
+                flex-direction: column !important;
+                gap: 0.75rem !important;
+            }
+            
+            .add-task-form-container input {
+                width: 100% !important;
+            }
+            
+            /* Date picker container */
+            .date-pickers {
+                flex-direction: column !important;
+                gap: 1.5rem !important;
+                align-items: center !important;
+            }
+            
+            .date-picker-group {
+                width: 100% !important;
+                max-width: 250px !important;
+            }
+            
+            .date-picker-group input {
+                width: 100% !important;
+            }
+            
+            /* Circular progress */
+            .circular-progress {
+                height: 100px !important;
+                width: 100px !important;
+            }
+            
+            .circular-progress::before {
+                height: 80px !important;
+                width: 80px !important;
+            }
+            
+            .day-number {
+                font-size: 2rem !important;
+            }
+            
+            /* Countdown timer */
+            #countdown-timer {
+                gap: 1rem !important;
+                flex-wrap: wrap !important;
+                justify-content: center !important;
+            }
+            
+            .countdown-number {
+                font-size: 1.875rem !important;
+            }
+            
+            /* Footer card adjustments */
+            .glossy-jira-card {
+                padding: 1rem !important;
+                flex-direction: column !important;
+                text-align: center !important;
+                gap: 1rem !important;
+            }
+            
+            .glossy-jira-card .flex.items-center {
+                flex-direction: column !important;
+                gap: 1rem !important;
+                text-align: center !important;
+            }
+            
+            /* Sync buttons */
+            #sync-container {
+                flex-direction: column !important;
+                gap: 0.75rem !important;
+            }
+            
+            #sync-container button {
+                width: 100% !important;
+                max-width: 200px !important;
+            }
+            
+            /* Reduce hover effects on mobile for performance */
+            .task-item:hover .task-card {
+                transform: scale(1.02) !important;
+            }
+            
+            /* Disable Netflix-style hover on mobile */
+            @media (hover: none) and (pointer: coarse) {
+                .task-item:hover .task-card {
+                    transform: none !important;
+                    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1) !important;
+                }
+                
+                #hover-backdrop {
+                    display: none !important;
+                }
+            }
+        }
+        
+        /* Tablet adjustments (641px to 1024px) */
+        @media (min-width: 641px) and (max-width: 1024px) {
+            .container {
+                padding: 1.5rem !important;
+            }
+            
+            /* Slightly smaller header on tablets */
+            header h1 {
+                font-size: 3rem !important;
+            }
+            
+            /* Task cards - more moderate padding */
+            .task-item .task-card {
+                padding: 1.25rem !important;
+            }
+            
+            /* Controls - allow wrapping if needed */
+            .task-item .flex.items-center.space-x-2 {
+                flex-wrap: wrap !important;
+                gap: 0.75rem !important;
+            }
+            
+            /* Slightly larger touch targets */
+            .control-btn {
+                width: 2.25rem !important;
+                height: 2.25rem !important;
+            }
+            
+            /* Date picker adjustments */
+            .date-pickers {
+                gap: 1.25rem !important;
+            }
+            
+            /* Moderate hover effects on tablets */
+            .task-item:hover .task-card {
+                transform: scale(1.3) !important;
+            }
+            
+            /* Footer card - keep horizontal layout but adjust spacing */
+            .glossy-jira-card {
+                padding: 1.25rem !important;
+                gap: 1rem !important;
+            }
+        }
+        
+        /* Large mobile landscape (up to 768px wide, landscape orientation) */
+        @media (max-width: 768px) and (orientation: landscape) {
+            header h1 {
+                font-size: 2.25rem !important;
+                margin-bottom: 0.5rem !important;
+            }
+            
+            header p {
+                font-size: 0.875rem !important;
+                margin-top: 0.25rem !important;
+            }
+            
+            .target-date-container {
+                padding: 1rem !important;
+            }
+            
+            .date-pickers {
+                flex-direction: row !important;
+                justify-content: space-around !important;
+            }
+            
+            .circular-progress {
+                height: 80px !important;
+                width: 80px !important;
+            }
+            
+            .circular-progress::before {
+                height: 65px !important;
+                width: 65px !important;
+            }
         }
     </style>
 </head>

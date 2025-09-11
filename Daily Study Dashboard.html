@@ -157,6 +157,30 @@
             letter-spacing: 0.05em;
             color: #9ca3af; /* gray-400 */
         }
+
+        /* --- Beautiful Progress Display --- */
+        .progress-display {
+            background: #374151; /* gray-700 */
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+        }
+        .progress-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+        }
+        .stat-item .label {
+            color: #9ca3af; /* gray-400 */
+            font-size: 0.75rem;
+        }
+        .stat-item .value {
+            color: #d1d5db; /* gray-300 */
+            font-weight: 600;
+        }
+        .stat-item .value.completed {
+            color: #34d399; /* emerald-400 */
+        }
     </style>
 </head>
 <body class="text-gray-200 antialiased">
@@ -168,6 +192,7 @@
     </header>
     
     <main id="main-content" class="space-y-3">
+        <!-- Loader is displayed here initially -->
         <div class="loader"></div>
         <p class="text-center text-gray-400">Loading your tracker...</p>
     </main>
@@ -205,6 +230,7 @@
         let tasks = [];
         let progressState = {};
         let dailyProgressState = {};
+        let dailyGoals = {};
         let targetDate = new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
         let countdownInterval = null;
 
@@ -243,7 +269,6 @@
                 const record = data.record || data;
                 if (Object.keys(record).length === 0) throw new Error("Bin is empty.");
 
-                // FIX: Pull ALL data from the cloud record and save it to localStorage
                 localStorage.setItem('studyTargetDate', record.studyTargetDate || new Date().toISOString());
                 localStorage.setItem('studyTasks', JSON.stringify(record.studyTasks || []));
                 localStorage.setItem('studyProgressState', JSON.stringify(record.studyProgressState || {}));
@@ -252,7 +277,6 @@
                 localStorage.setItem('studyTrackerSubtitle', record.studyTrackerSubtitle || 'Your customizable study plan.');
                 localStorage.setItem('studyTrackerFooter', record.studyTrackerFooter || 'Happy studying!');
                 
-                // Now that localStorage is updated, load state from it into the app variables
                 loadStateFromLocal();
                 updateSyncStatus('Pull successful ✓', '#10b981');
 
@@ -279,7 +303,6 @@
         }
 
         async function handlePushToCloud() {
-            // FIX: Gather ALL data from localStorage to push
             const dataToSync = {
                 studyTargetDate: localStorage.getItem('studyTargetDate'),
                 studyTasks: JSON.parse(localStorage.getItem('studyTasks') || '[]'),
@@ -375,8 +398,17 @@
             });
         }
         
+        function calculateAllDailyGoals() {
+            const daysRemaining = getDaysRemaining();
+            const durationInDays = Math.max(1, daysRemaining);
+            tasks.forEach(task => {
+                dailyGoals[task.id] = Math.ceil(Number(task.totalGoal) / durationInDays);
+            });
+        }
+
         function render() {
             mainContentContainer.innerHTML = ''; 
+
             const tasksContainer = document.createElement('div');
             tasksContainer.id = 'tasks-container';
             tasksContainer.className = 'space-y-4';
@@ -389,35 +421,41 @@
                     taskItem.className = 'task-item bg-gray-800 rounded-lg shadow-md p-4 flex flex-col gap-4';
                     taskItem.style.animationDelay = `${taskIndex * 50}ms`;
                     taskItem.innerHTML = `
-                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div class="w-full sm:w-auto flex-grow sm:pr-4">
-                               <div class="flex justify-between items-baseline mb-2">
-                                    <span class="font-semibold text-lg text-gray-200">${task.name}</span>
-                                    <span id="task-progress-text-${task.id}" class="text-sm font-medium text-gray-400">0 / ${task.totalGoal}</span>
-                                </div>
-                                <div class="space-y-2">
-                                    <div>
-                                        <div class="flex items-center justify-between"><div class="text-xs text-gray-400 mb-1">Daily Goal</div><span id="daily-progress-text-${task.id}" class="text-xs font-medium text-gray-400">0 / 0</span></div>
-                                        <div class="w-full bg-gray-700 rounded-full h-2.5"><div id="task-progress-bar-daily-${task.id}" class="progress-bar-fill progress-bar-daily" style="width: 0%"></div></div>
-                                    </div>
-                                    <div>
-                                        <div class="text-xs text-gray-400 mb-1">Overall Progress</div>
-                                        <div class="w-full bg-gray-700 rounded-full h-2.5"><div id="task-progress-bar-overall-${task.id}" class="progress-bar-fill progress-bar-overall" style="width: 0%"></div></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0 self-end sm:self-center">
+                        <div class="flex flex-col xl:flex-row items-start justify-between gap-4">
+                             <span class="font-semibold text-xl text-gray-200">${task.name}</span>
+                             <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0 self-end xl:self-center">
                                 <button class="control-btn remove-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-rose-600 transition-colors flex items-center justify-center" data-task="${task.id}" title="Remove Task"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                                 <button class="control-btn minus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-red-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="-1" title="Increase remaining count">-</button>
                                 <div class="flex items-center space-x-1">
-                                    <span class="text-gray-400 text-sm whitespace-nowrap">Remaining:</span>
-                                    <input type="number" class="task-input-remaining w-14 text-center bg-gray-900 border border-gray-600 rounded-md h-8 focus:ring-2 focus:ring-sky-500 focus:border-sky-500" value="0" min="0" data-task="${task.id}">
-                                    <span class="text-gray-400">/</span>
-                                    <input type="number" class="task-input-total w-14 text-center bg-gray-900 border border-gray-600 rounded-md h-8 focus:ring-2 focus:ring-sky-500 focus:border-sky-500" value="${task.totalGoal}" min="0" data-task="${task.id}">
+                                    <span class="text-gray-400 text-sm whitespace-nowrap">Completed:</span>
+                                    <input type="number" class="task-input-completed w-14 text-center bg-gray-900 border border-gray-600 rounded-md h-8 focus:ring-2 focus:ring-sky-500 focus:border-sky-500" value="0" min="0" data-task="${task.id}">
                                 </div>
                                 <button class="control-btn plus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-green-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="1" title="Decrease remaining count">+</button>
                             </div>
-                        </div>`;
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Daily Progress -->
+                            <div class="progress-display">
+                                <h4 class="font-semibold text-gray-300">Daily Progress</h4>
+                                <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-daily-${task.id}" class="progress-bar-fill progress-bar-daily" style="width: 0%"></div></div>
+                                <div class="progress-stats">
+                                    <div class="stat-item text-center"><div class="label">Completed</div><div id="daily-completed-${task.id}" class="value completed">0</div></div>
+                                    <div class="stat-item text-center"><div class="label">Remaining</div><div id="daily-remaining-${task.id}" class="value">0</div></div>
+                                    <div class="stat-item text-center"><div class="label">Total</div><div id="daily-total-${task.id}" class="value">0</div></div>
+                                </div>
+                            </div>
+                            <!-- Overall Progress -->
+                            <div class="progress-display">
+                                <h4 class="font-semibold text-gray-300">Overall Progress</h4>
+                                <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-overall-${task.id}" class="progress-bar-fill progress-bar-overall" style="width: 0%"></div></div>
+                                <div class="progress-stats">
+                                    <div class="stat-item text-center"><div class="label">Completed</div><div id="overall-completed-${task.id}" class="value completed">0</div></div>
+                                    <div class="stat-item text-center"><div class="label">Remaining</div><div id="overall-remaining-${task.id}" class="value">0</div></div>
+                                    <div class="stat-item text-center"><div class="label">Total</div><div id="overall-total-${task.id}" class="value">${task.totalGoal}</div></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
                     tasksContainer.appendChild(taskItem);
                 });
             }
@@ -440,43 +478,64 @@
             updateUI();
         }
 
+        function getDaysRemaining() {
+            const difference = targetDate.getTime() - new Date().getTime();
+            if (difference <= 0) return 0.001;
+            return difference / (1000 * 60 * 60 * 24);
+        }
+
         function updateCountdown() {
             const timerElement = document.getElementById('countdown-timer');
-            if (!timerElement) return 1;
+            if (!timerElement) return;
+
             const difference = targetDate.getTime() - new Date().getTime();
+
             if (difference <= 0) {
                 timerElement.innerHTML = `<span class="text-2xl font-bold text-rose-500">Deadline Reached!</span>`;
-                return 0.001;
+                return;
             }
-            const days = Math.floor(difference / 86400000);
-            const hours = Math.floor((difference % 86400000) / 3600000);
-            const minutes = Math.floor((difference % 3600000) / 60000);
-            const seconds = Math.floor((difference % 60000) / 1000);
+
+            const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
             timerElement.innerHTML = `
                 <div class="countdown-segment"><span class="countdown-number">${days}</span><span class="countdown-label">Days</span></div>
                 <div class="countdown-segment"><span class="countdown-number">${hours}</span><span class="countdown-label">Hours</span></div>
                 <div class="countdown-segment"><span class="countdown-number">${minutes}</span><span class="countdown-label">Minutes</span></div>
-                <div class="countdown-segment"><span class="countdown-number">${seconds}</span><span class="countdown-label">Seconds</span></div>`;
-            return difference / 86400000;
+                <div class="countdown-segment"><span class="countdown-number">${seconds}</span><span class="countdown-label">Seconds</span></div>
+            `;
         }
 
         function updateUI() {
-            const durationInDays = Math.max(1, updateCountdown());
+            updateCountdown();
+
             tasks.forEach(task => {
                 const totalGoal = Number(task.totalGoal);
                 const totalCompleted = Number(progressState[task.id] || 0);
                 const todaysCompleted = Number(dailyProgressState[task.id] || 0);
-                const remaining = totalGoal - totalCompleted;
-                const dailyGoal = Math.ceil((totalGoal - totalCompleted) / durationInDays);
+                const overallRemaining = totalGoal - totalCompleted;
+                const dailyGoal = dailyGoals[task.id] || 0;
+                const dailyRemaining = Math.max(0, dailyGoal - todaysCompleted);
+
                 const overallPercent = totalGoal > 0 ? (totalCompleted / totalGoal) * 100 : 0;
                 const dailyPercent = dailyGoal > 0 ? (todaysCompleted / dailyGoal) * 100 : 0;
                 
-                document.querySelector(`.task-input-remaining[data-task="${task.id}"]`).value = remaining;
-                document.querySelector(`.task-input-total[data-task="${task.id}"]`).value = totalGoal;
+                document.querySelector(`.task-input-completed[data-task="${task.id}"]`).value = totalCompleted;
+                
+                // Update progress bars
                 document.getElementById(`task-progress-bar-daily-${task.id}`).style.width = `${Math.min(100, dailyPercent)}%`;
                 document.getElementById(`task-progress-bar-overall-${task.id}`).style.width = `${Math.min(100, overallPercent)}%`;
-                document.getElementById(`task-progress-text-${task.id}`).textContent = `${totalCompleted} / ${totalGoal}`;
-                document.getElementById(`daily-progress-text-${task.id}`).textContent = `${todaysCompleted} / ${dailyGoal < 0 ? 0 : dailyGoal}`;
+
+                // Update stats
+                document.getElementById(`daily-completed-${task.id}`).textContent = todaysCompleted;
+                document.getElementById(`daily-remaining-${task.id}`).textContent = dailyRemaining;
+                document.getElementById(`daily-total-${task.id}`).textContent = dailyGoal;
+
+                document.getElementById(`overall-completed-${task.id}`).textContent = totalCompleted;
+                document.getElementById(`overall-remaining-${task.id}`).textContent = overallRemaining;
+                document.getElementById(`overall-total-${task.id}`).textContent = totalGoal;
             });
         }
         
@@ -486,27 +545,30 @@
                     const newDate = new Date(e.target.value);
                     if (!isNaN(newDate.getTime())) {
                         targetDate = newDate;
+                        calculateAllDailyGoals(); // Recalculate daily goals on date change
                         saveStateToLocal();
                         updateUI();
                     }
                     return;
                 }
+
                 const taskId = e.target.dataset.task;
                 if (taskId) {
                     const task = tasks.find(t => t.id === taskId);
                     if (!task) return;
+                    
                     const oldCompleted = progressState[task.id] || 0;
-                    if (e.target.classList.contains('task-input-remaining')) {
-                        const newCompleted = Math.max(0, Math.min(Number(task.totalGoal) - parseInt(e.target.value, 10), Number(task.totalGoal)));
-                        progressState[taskId] = newCompleted;
-                        dailyProgressState[taskId] = (dailyProgressState[taskId] || 0) + (newCompleted - oldCompleted);
-                    } else if (e.target.classList.contains('task-input-total')) {
-                        const newTotal = parseInt(e.target.value, 10);
-                        if (!isNaN(newTotal) && newTotal >= 0) {
-                            task.totalGoal = newTotal;
-                            if (newTotal < progressState[taskId]) progressState[taskId] = newTotal;
+
+                    if (e.target.classList.contains('task-input-completed')) {
+                        const newCompletedValue = parseInt(e.target.value, 10);
+                        if (!isNaN(newCompletedValue)) {
+                            const newCompleted = Math.max(0, Math.min(newCompletedValue, Number(task.totalGoal)));
+                            const delta = newCompleted - oldCompleted;
+                            
+                            progressState[taskId] = newCompleted;
+                            dailyProgressState[taskId] = (dailyProgressState[taskId] || 0) + delta;
                         }
-                    }
+                    } 
                     saveStateToLocal();
                     updateUI();
                 }
@@ -516,17 +578,25 @@
                 const controlBtn = e.target.closest('.control-btn');
                 if (!controlBtn) return;
                 const { task: taskId, change } = controlBtn.dataset;
+                const task = tasks.find(t => t.id === taskId);
+                if (!task) return;
+
                 if (change) {
                     const changeAmount = parseInt(change, 10);
-                    const task = tasks.find(t => t.id === taskId);
-                    if (!task) return;
-                    progressState[taskId] = Math.max(0, Math.min((progressState[taskId] || 0) + changeAmount, Number(task.totalGoal)));
-                    dailyProgressState[taskId] = Math.max(0, (dailyProgressState[taskId] || 0) + changeAmount);
+                    const totalGoal = Number(task.totalGoal);
+                    const currentCompleted = progressState[taskId] || 0;
+                    const newCompleted = currentCompleted + changeAmount;
+                    
+                    if (newCompleted >= 0 && newCompleted <= totalGoal) {
+                        progressState[taskId] = newCompleted;
+                        dailyProgressState[taskId] = Math.max(0, (dailyProgressState[taskId] || 0) + changeAmount);
+                    }
                 } else if (controlBtn.classList.contains('remove-btn')) {
                     tasks = tasks.filter(t => t.id !== taskId);
                     delete progressState[taskId];
                     delete dailyProgressState[taskId];
-                    render();
+                    delete dailyGoals[taskId];
+                    render(); 
                 }
                 saveStateToLocal();
                 updateUI();
@@ -540,7 +610,11 @@
                     const name = nameInput.value.trim();
                     const goal = parseInt(goalInput.value, 10);
                     if (name && !isNaN(goal) && goal > 0) {
-                        tasks.push({ id: `task-${Date.now()}`, name, totalGoal: goal });
+                        const newTask = { id: `task-${Date.now()}`, name, totalGoal: goal };
+                        tasks.push(newTask);
+                        progressState[newTask.id] = 0;
+                        dailyProgressState[newTask.id] = 0;
+                        calculateAllDailyGoals(); // Calculate goal for new task
                         saveStateToLocal();
                         render();
                         nameInput.value = '';
@@ -556,6 +630,7 @@
         
         function typeWriter(element, text, callback) {
             let i = 0;
+            const speed = 50;
             element.innerHTML = '';
             element.classList.add('typing-cursor');
             function type() {
@@ -573,6 +648,8 @@
 
         function initializeAppUI() {
             mainContentContainer.innerHTML = ''; 
+            loadStateFromLocal();
+            calculateAllDailyGoals();
             render();
             attachEventListeners();
             document.getElementById('sync-container').style.display = 'flex';

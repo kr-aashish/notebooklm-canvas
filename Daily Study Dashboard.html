@@ -278,7 +278,10 @@
                                 </div>
                                 <div class="space-y-2">
                                     <div>
-                                        <div class="text-xs text-gray-400 mb-1">Daily Goal</div>
+                                        <div class="flex items-center justify-between">
+                                            <div class="text-xs text-gray-400 mb-1">Daily Goal</div>
+                                            <span id="daily-progress-text-${task.id}" class="text-xs font-medium text-gray-400">0 / 0</span>
+                                        </div>
                                         <div class="w-full bg-gray-700 rounded-full h-2.5">
                                             <div id="task-progress-bar-daily-${task.id}" class="progress-bar-fill progress-bar-daily" style="width: 0%"></div>
                                         </div>
@@ -377,12 +380,14 @@
                 const dailyBar = document.getElementById(`task-progress-bar-daily-${task.id}`);
                 const overallBar = document.getElementById(`task-progress-bar-overall-${task.id}`);
                 const progressText = document.getElementById(`task-progress-text-${task.id}`);
+                const dailyProgressText = document.getElementById(`daily-progress-text-${task.id}`);
 
                 if(remainingInput) remainingInput.value = remaining;
                 if(totalInput) totalInput.value = totalGoal;
                 if(dailyBar) dailyBar.style.width = `${Math.min(100, dailyPercent)}%`;
                 if(overallBar) overallBar.style.width = `${Math.min(100, overallPercent)}%`;
                 if(progressText) progressText.textContent = `${totalCompleted} / ${totalGoal}`;
+                if(dailyProgressText) dailyProgressText.textContent = `${todaysCompleted} / ${dailyGoal}`;
             });
         }
         
@@ -438,15 +443,18 @@
                     if (!task) return;
 
                     if (change) {
+                        const changeAmount = parseInt(change, 10);
                         const totalGoal = Number(task.totalGoal);
+
+                        // Update overall progress, clamped between 0 and totalGoal.
                         let currentCompleted = progressState[taskId] || 0;
-                        let newCompleted = currentCompleted + parseInt(change, 10);
-                        newCompleted = Math.max(0, Math.min(newCompleted, totalGoal));
+                        let newCompleted = currentCompleted + changeAmount;
+                        progressState[taskId] = Math.max(0, Math.min(newCompleted, totalGoal));
                         
-                        if (newCompleted !== currentCompleted) {
-                            progressState[taskId] = newCompleted;
-                            dailyProgressState[taskId] = (dailyProgressState[taskId] || 0) + parseInt(change, 10);
-                        }
+                        // Update daily progress continuously. Only clamp it at 0.
+                        dailyProgressState[taskId] = (dailyProgressState[taskId] || 0) + changeAmount;
+                        dailyProgressState[taskId] = Math.max(0, dailyProgressState[taskId]);
+
                     } else if (controlBtn.classList.contains('remove-btn')) {
                         tasks = tasks.filter(t => t.id !== taskId);
                         delete progressState[taskId];
@@ -538,3 +546,4 @@
 </script>
 </body>
 </html>
+

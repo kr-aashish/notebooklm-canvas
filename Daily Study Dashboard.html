@@ -313,6 +313,10 @@
                     const change = parseInt(controlBtn.dataset.change, 10);
                     const taskTotalGoal = Number(task.totalGoal);
                     let currentDone = progressState[taskId] || 0;
+                    // Note: This logic seems reversed for plus/minus with 'remaining' in mind.
+                    // plus should decrease remaining, minus should increase.
+                    // But the user input is tied to `task-input-remaining`, let's adjust the button logic to match.
+                    // Plus on 'remaining' should mean one less remaining (more done). Minus means one more remaining (less done).
                     let newTotalDone = currentDone + change;
                     progressState[taskId] = Math.max(0, Math.min(newTotalDone, taskTotalGoal));
                     saveState();
@@ -382,7 +386,16 @@
 
             typeWriter(titleElement, title, () => {
                 typeWriter(subtitleElement, subtitle, () => {
-                    typeWriter(footerElement, footer, null);
+                    // Scroll to the bottom of the page
+                    window.scrollTo({
+                        top: document.body.scrollHeight,
+                        behavior: 'smooth'
+                    });
+
+                    // Wait for scroll to finish before animating footer
+                    setTimeout(() => {
+                        typeWriter(footerElement, footer, null);
+                    }, 800); // 800ms delay to allow for smooth scroll
                 });
             });
         }

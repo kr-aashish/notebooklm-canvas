@@ -175,7 +175,7 @@
     <footer class="text-center mt-12 text-gray-500 text-sm">
         <p class="min-h-[20px]"></p>
         
-        <div id="sync-container" class="mt-4 flex justify-center items-center gap-4">
+        <div id="sync-container" class="mt-4 flex justify-center items-center gap-4" style="display: none;">
             <button id="pull-button" class="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 9.293a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -217,20 +217,43 @@
         const subtitleElement = document.querySelector('header p');
         const footerElement = document.querySelector('footer p');
         
-        // --- App Initialization ---
-        setTimeout(() => {
-            initializeAppUI();
-        }, 1000);
+        // --- App Initialization Entry Point ---
+        // FIX: Replaced setTimeout with a new async function for better control
+        initialLoad();
 
-        // --- SYNC LOGIC ---: ENDPOINT 1 - Manual Pull from Cloud
-        async function handlePullFromCloud() {
-            if ( !confirm("Are you sure you want to pull data from the cloud? This will overwrite your current local data.") ) {
-                return;
+        // --- NEW ---: Handles the smart initial loading logic
+        async function initialLoad() {
+            // Check if local storage has any of our app's data
+            const isLocalStorageEmpty = !localStorage.getItem('studyTasks');
+
+            if (isLocalStorageEmpty) {
+                updateSyncStatus('First time setup. Pulling from cloud...', '#a78bfa');
+                // Auto-pull without the confirmation prompt
+                const success = await handlePullFromCloud(false); // `false` means no confirmation
+                if (!success) {
+                    // If the initial pull fails, load with empty local state
+                    loadStateFromLocal();
+                }
+            } else {
+                // Load from local storage if data exists
+                loadStateFromLocal();
+            }
+
+            // Render the full UI after data is loaded
+            initializeAppUI();
+        }
+
+        // --- SYNC LOGIC ---: ENDPOINT 1 - Manual/Auto Pull from Cloud
+        async function handlePullFromCloud(withConfirmation = true) { // Default to showing confirmation
+            if (withConfirmation && !confirm("Are you sure you want to pull data from the cloud? This will overwrite your current local data.")) {
+                return false;
             }
 
             const pullButton = document.getElementById('pull-button');
-            pullButton.disabled = true;
-            pullButton.innerHTML = 'Pulling...';
+            if (pullButton) { // Button might not exist during initial auto-pull
+                pullButton.disabled = true;
+                pullButton.innerHTML = 'Pulling...';
+            }
 
             try {
                 updateSyncStatus('Pulling from cloud...', '#6b7280');
@@ -244,16 +267,13 @@
                 const record = data.record || data;
                 if (Object.keys(record).length === 0) throw new Error("Bin is empty.");
 
-                // FIX: Overwrite local variables with cloud data using the correct keys from your JSON
                 targetDate = record.studyTargetDate ? new Date(record.studyTargetDate) : new Date();
                 tasks = record.studyTasks || [];
                 progressState = record.studyProgressState || {};
                 dailyProgressState = record.studyDailyProgressState || {};
                 
-                // Save this new state to localStorage
                 saveStateToLocal();
                 
-                // Save texts to localStorage
                 localStorage.setItem('studyTrackerTitle', record.studyTrackerTitle || 'Study Progress Tracker');
                 localStorage.setItem('studyTrackerSubtitle', record.studyTrackerSubtitle || 'Your customizable study plan & progress tracker.');
                 localStorage.setItem('studyTrackerFooter', record.studyTrackerFooter || 'Happy studying!');
@@ -261,31 +281,32 @@
 
                 updateSyncStatus('Pull successful ✓', '#10b981');
                 
-                // FIX: Re-render the UI smoothly without a page reload
-                mainContentContainer.style.transition = 'opacity 0.3s ease-out';
-                mainContentContainer.style.opacity = '0';
-                
-                setTimeout(() => {
-                    // Stop the countdown before re-rendering
-                    if (countdownInterval) clearInterval(countdownInterval);
-                    initializeAppUI();
-                    mainContentContainer.style.opacity = '1';
-                }, 300);
-
+                // If this is a manual pull (not the initial one), re-render smoothly
+                if (withConfirmation) {
+                    mainContentContainer.style.transition = 'opacity 0.3s ease-out';
+                    mainContentContainer.style.opacity = '0';
+                    setTimeout(() => {
+                        if (countdownInterval) clearInterval(countdownInterval);
+                        initializeAppUI(); // This re-renders everything
+                        mainContentContainer.style.opacity = '1';
+                    }, 300);
+                }
+                return true; // Indicate success
 
             } catch (error) {
                 console.error("Failed to pull from cloud:", error);
                 updateSyncStatus(`Pull Error: ${error.message}`, '#ef4444');
+                return false; // Indicate failure
             } finally {
-                pullButton.disabled = false;
-                pullButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 9.293a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg> Pull from Cloud`;
+                if (pullButton) {
+                    pullButton.disabled = false;
+                    pullButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 9.293a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg> Pull from Cloud`;
+                }
             }
         }
 
         // --- SYNC LOGIC ---: ENDPOINT 2 - Manual Push to Cloud
         async function handlePushToCloud() {
-            // Package all current local data into one object
-            // FIX: Use the same keys as your JSONbin data for consistency
             const dataToSync = {
                 studyTargetDate: targetDate.toISOString(),
                 studyTasks: tasks,
@@ -329,7 +350,7 @@
             if (syncStatusElement) {
                 syncStatusElement.textContent = message;
                 syncStatusElement.style.color = color;
-                // Clear the message after 5 seconds
+                
                 setTimeout(() => {
                     if (syncStatusElement.textContent === message) {
                         syncStatusElement.textContent = '';
@@ -627,7 +648,7 @@
                 }
             });
             
-            document.getElementById('pull-button').addEventListener('click', handlePullFromCloud);
+            document.getElementById('pull-button').addEventListener('click', () => handlePullFromCloud(true));
             document.getElementById('push-button').addEventListener('click', handlePushToCloud);
         }
         
@@ -652,12 +673,12 @@
         }
 
         function initializeAppUI() {
-            // Load from local storage on startup
-            loadStateFromLocal();
-            // Clear the initial "Loading..." message and render the main content
             mainContentContainer.innerHTML = ''; 
             render();
             attachEventListeners();
+            
+            // FIX: Make sync buttons visible after the main UI is ready
+            document.getElementById('sync-container').style.display = 'flex';
 
             const dateInput = document.getElementById('target-date-input');
             if (dateInput) {
@@ -674,7 +695,6 @@
 
             const { title, subtitle, footer } = getSavedTexts();
 
-            // Only run the typewriter animation on the very first load
             if (!titleElement.hasAttribute('contenteditable')) {
                 typeWriter(titleElement, title, () => {
                     typeWriter(subtitleElement, subtitle, () => {
@@ -682,7 +702,7 @@
                         setTimeout(() => typeWriter(footerElement, footer, null), 800);
                     });
                 });
-            } else { // On re-renders (like after a pull), just set the text directly
+            } else {
                 titleElement.textContent = title;
                 subtitleElement.textContent = subtitle;
                 footerElement.textContent = footer;

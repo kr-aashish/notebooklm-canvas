@@ -19,14 +19,17 @@
         ::-webkit-scrollbar-track { background: #1f2937; }
         ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        
         /* --- Entry Animation --- */
         @keyframes fadeInSlideUp {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
         .task-item, .add-task-form-container { animation: fadeInSlideUp 0.5s ease-out forwards; }
+        
         /* --- Progress Bar --- */
         .progress-bar-fill { transition: width 0.5s ease-in-out; }
+        
         /* --- Number Input Customization --- */
         input[type=number]::-webkit-inner-spin-button,
         input[type=number]::-webkit-outer-spin-button {
@@ -35,19 +38,50 @@
         }
         input[type=number] { -moz-appearance: textfield; }
 
-        /* --- Loading Spinner --- */
+        /* --- Beautiful Loading Spinner --- */
         .loader {
-            border: 4px solid #374151; /* gray-700 */
-            border-top: 4px solid #38bdf8; /* sky-400 */
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
+            position: relative;
+            animation: rotate 1.2s linear infinite;
             margin: 5rem auto;
         }
-        @keyframes spin {
+        .loader::before, .loader::after {
+            content: "";
+            box-sizing: border-box;
+            position: absolute;
+            inset: 0px;
+            border-radius: 50%;
+            border: 5px solid #1f2937; /* gray-800 */
+            animation: prixClipFix 2s linear infinite;
+        }
+        .loader::after {
+            border-color: #38bdf8; /* sky-400 */
+            animation: prixClipFix 2s linear infinite, rotate 0.5s linear infinite reverse;
+            inset: 6px;
+        }
+        @keyframes rotate {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        @keyframes prixClipFix {
+            0%   { clip-path: polygon(50% 50%, 0 0, 0 0, 0 0, 0 0, 0 0) }
+            25%  { clip-path: polygon(50% 50%, 0 0, 100% 0, 100% 0, 100% 0, 100% 0) }
+            50%  { clip-path: polygon(50% 50%, 0 0, 100% 0, 100% 100%, 100% 100%, 100% 100%) }
+            75%  { clip-path: polygon(50% 50%, 0 0, 100% 0, 100% 100%, 0 100%, 0 100%) }
+            100% { clip-path: polygon(50% 50%, 0 0, 100% 0, 100% 100%, 0 100%, 0 0) }
+        }
+
+        /* --- Editable Content Styling --- */
+        [contenteditable="true"]:hover {
+            outline: 2px dashed #4b5563; /* Tailwind gray-600 */
+            border-radius: 4px;
+        }
+        [contenteditable="true"]:focus {
+            outline: 2px solid #38bdf8; /* Tailwind sky-400 */
+            background-color: #1f2937; /* Tailwind gray-800 */
+            border-radius: 4px;
         }
     </style>
 </head>
@@ -55,148 +89,38 @@
 
 <div class="container mx-auto max-w-4xl p-4 sm:p-6 md:p-8">
     <header class="text-center mb-8">
-        <h1 class="text-4xl sm:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400 pb-2">
+        <h1 contenteditable="true" class="text-4xl sm:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400 pb-2">
             Study Progress Tracker
         </h1>
-        <p class="text-gray-400 mt-2 text-lg">Your customizable study plan and progress tracker.</p>
-        <p id="sync-status" class="text-sm text-gray-500 mt-2 h-4"></p>
+        <p contenteditable="true" class="text-gray-400 mt-2 text-lg">Your customizable study plan and progress tracker.</p>
     </header>
 
     <main id="main-content" class="space-y-3">
+        <!-- Loader is displayed here initially -->
         <div class="loader"></div>
-        <p class="text-center text-gray-400">Connecting to sync service...</p>
+        <p class="text-center text-gray-400">Loading your tracker...</p>
     </main>
 
     <footer class="text-center mt-12 text-gray-500 text-sm">
-        <p>Happy studying!</p>
+        <p contenteditable="true">Happy studying!</p>
     </footer>
 </div>
 
-<!-- =============================================================== -->
-<!-- Firebase SDK -->
-<!-- =============================================================== -->
-<script type="module">
-    // Import the functions you need from the SDKs you need
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+<script>
     document.addEventListener('DOMContentLoaded', () => {
-
-        // ===============================================================
-        // PASTE YOUR FIREBASE CONFIGURATION OBJECT HERE
-        // ===============================================================
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-        // ===============================================================
-        
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        let userId = null;
-        let firestoreUnsubscribe = null; // To store the real-time listener
-
         const DURATION_IN_DAYS = 4;
-        const DEFAULT_TASKS = [
-        ];
+        const DEFAULT_TASKS = [];
 
         let tasks = [];
         let progressState = {};
-        let debounceTimer;
 
         const mainContentContainer = document.getElementById('main-content');
-        const syncStatusEl = document.getElementById('sync-status');
-
-        function showSyncStatus(message, duration = 2000) {
-            syncStatusEl.textContent = message;
-            setTimeout(() => {
-                if (syncStatusEl.textContent === message) {
-                    syncStatusEl.textContent = 'All changes saved.';
-                }
-            }, duration);
-        }
-
-        // --- Firebase Integration ---
-        onAuthStateChanged(auth, user => {
-            if (user) {
-                // User is signed in.
-                userId = user.uid;
-                console.log("User signed in with ID:", userId);
-                loadStateFromFirestore();
-            } else {
-                // User is signed out. Sign in anonymously.
-                signInAnonymously(auth).catch(error => {
-                    console.error("Anonymous sign-in failed:", error);
-                    // If sign-in fails, load from local cache as a fallback
-                    loadStateFromLocal();
-                    initializeAppUI();
-                });
-            }
-        });
-
-        function loadStateFromFirestore() {
-            if (!userId) return;
-
-            const docRef = doc(db, "user-progress", userId);
-
-            // Set up a real-time listener
-            if (firestoreUnsubscribe) firestoreUnsubscribe(); // Detach any old listener
-            
-            firestoreUnsubscribe = onSnapshot(docRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    console.log("Firestore data received.");
-                    const data = docSnap.data();
-                    tasks = data.tasks || [];
-                    progressState = data.progressState || {};
-                    
-                    // Sync with local state to ensure consistency
-                    syncAndValidateState();
-                    
-                    // Update local cache with Firestore data
-                    localStorage.setItem('studyTasks', JSON.stringify(tasks));
-                    localStorage.setItem('studyProgressState', JSON.stringify(progressState));
-
-                    showSyncStatus('Data synced from cloud.');
-                } else {
-                    console.log("No document found in Firestore. Loading from local or defaults.");
-                    // First time user, load from local/defaults and save to Firestore
-                    loadStateFromLocal();
-                    saveStateToFirestore();
-                }
-                initializeAppUI();
-            }, (error) => {
-                console.error("Error listening to Firestore:", error);
-                showSyncStatus('Syncing failed. Using local data.');
-                loadStateFromLocal(); // Fallback to local on error
-                initializeAppUI();
-            });
-        }
         
-        async function saveStateToFirestore() {
-            if (!userId) return;
-
-            showSyncStatus('Saving...');
-            try {
-                const docRef = doc(db, "user-progress", userId);
-                await setDoc(docRef, { 
-                    tasks: tasks, 
-                    progressState: progressState,
-                    lastUpdated: new Date().toISOString()
-                });
-                console.log("Data saved to Firestore.");
-                syncStatusEl.textContent = 'All changes saved.';
-            } catch (error) {
-                console.error("Error saving to Firestore: ", error);
-                showSyncStatus('Failed to save to cloud.');
-            }
-        }
+        // --- App Initialization ---
+        // Show loader for 1 second, then initialize the main application UI
+        setTimeout(() => {
+            initializeAppUI();
+        }, 1000);
 
         function loadStateFromLocal() {
             const savedTasks = localStorage.getItem('studyTasks');
@@ -215,9 +139,8 @@
             progressState = savedProgress ? JSON.parse(savedProgress) : {};
             syncAndValidateState();
         }
-        
+
         function syncAndValidateState() {
-            // Sync progress state with tasks, initializing new tasks
             const taskIds = tasks.map(t => t.id);
             Object.keys(progressState).forEach(id => {
                 if (!taskIds.includes(id)) {
@@ -232,17 +155,13 @@
         }
 
         function saveState() {
-            // Save to local cache immediately for responsiveness
+            // Save to local cache immediately
             localStorage.setItem('studyTasks', JSON.stringify(tasks));
             localStorage.setItem('studyProgressState', JSON.stringify(progressState));
-
-            // Debounce Firestore writes to avoid too many writes in a short time
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(saveStateToFirestore, 1000); // Save after 1 second of inactivity
         }
 
         function render() {
-            mainContentContainer.innerHTML = ''; // Clear previous content
+            mainContentContainer.innerHTML = ''; // Clear previous content (including loader)
 
             const tasksContainer = document.createElement('div');
             tasksContainer.id = 'tasks-container';
@@ -402,17 +321,10 @@
             });
         }
         
-        let uiInitialized = false;
         function initializeAppUI() {
-            if (uiInitialized) {
-                // If UI is already there, just re-render and update
-                render();
-                return;
-            };
-            
+            loadStateFromLocal();
             render();
             attachEventListeners();
-            uiInitialized = true;
         }
 
     });

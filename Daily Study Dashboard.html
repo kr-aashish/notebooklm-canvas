@@ -196,107 +196,80 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-
-        // --- SYNC LOGIC ---: Configuration with your provided keys
         const JSONBIN_API_KEY = "$2a$10$hbH6IPJ.X8Dmvjp.hgDXBOIxQ2iQ3WFkkTOub97qtWD6MYB2uqIV6";
         const JSONBIN_BIN_ID = "68c28d42ae596e708feac8f0";
-
         const FETCH_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`;
         const UPSERT_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
 
         let syncStatusElement;
-        
         let tasks = [];
         let progressState = {};
         let dailyProgressState = {};
-        let targetDate = new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000); // Default to 7 days from now
+        let targetDate = new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
         let countdownInterval = null;
 
         const mainContentContainer = document.getElementById('main-content');
         const titleElement = document.querySelector('header h1');
         const subtitleElement = document.querySelector('header p');
         const footerElement = document.querySelector('footer p');
-        
-        // --- App Initialization Entry Point ---
-        // FIX: Replaced setTimeout with a new async function for better control
-        initialLoad();
 
-        // --- NEW ---: Handles the smart initial loading logic
         async function initialLoad() {
-            // Check if local storage has any of our app's data
             const isLocalStorageEmpty = !localStorage.getItem('studyTasks');
-
             if (isLocalStorageEmpty) {
                 updateSyncStatus('First time setup. Pulling from cloud...', '#a78bfa');
-                // Auto-pull without the confirmation prompt
-                const success = await handlePullFromCloud(false); // `false` means no confirmation
-                if (!success) {
-                    // If the initial pull fails, load with empty local state
-                    loadStateFromLocal();
-                }
+                const success = await handlePullFromCloud(false);
+                if (!success) loadStateFromLocal();
             } else {
-                // Load from local storage if data exists
                 loadStateFromLocal();
             }
-
-            // Render the full UI after data is loaded
             initializeAppUI();
         }
 
-        // --- SYNC LOGIC ---: ENDPOINT 1 - Manual/Auto Pull from Cloud
-        async function handlePullFromCloud(withConfirmation = true) { // Default to showing confirmation
-            if (withConfirmation && !confirm("Are you sure you want to pull data from the cloud? This will overwrite your current local data.")) {
-                return false;
-            }
-
+        async function handlePullFromCloud(withConfirmation = true) {
+            if (withConfirmation && !confirm("Are you sure? This will overwrite your current local data.")) return false;
+            
             const pullButton = document.getElementById('pull-button');
-            if (pullButton) { // Button might not exist during initial auto-pull
+            if (pullButton) {
                 pullButton.disabled = true;
                 pullButton.innerHTML = 'Pulling...';
             }
 
             try {
                 updateSyncStatus('Pulling from cloud...', '#6b7280');
-                const response = await fetch(FETCH_URL, {
-                    method: 'GET',
-                    headers: { 'X-Master-Key': JSONBIN_API_KEY }
-                });
+                const response = await fetch(FETCH_URL, { headers: { 'X-Master-Key': JSONBIN_API_KEY } });
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 
                 const data = await response.json();
                 const record = data.record || data;
                 if (Object.keys(record).length === 0) throw new Error("Bin is empty.");
 
-                targetDate = record.studyTargetDate ? new Date(record.studyTargetDate) : new Date();
-                tasks = record.studyTasks || [];
-                progressState = record.studyProgressState || {};
-                dailyProgressState = record.studyDailyProgressState || {};
-                
-                saveStateToLocal();
-                
+                // FIX: Pull ALL data from the cloud record and save it to localStorage
+                localStorage.setItem('studyTargetDate', record.studyTargetDate || new Date().toISOString());
+                localStorage.setItem('studyTasks', JSON.stringify(record.studyTasks || []));
+                localStorage.setItem('studyProgressState', JSON.stringify(record.studyProgressState || {}));
+                localStorage.setItem('studyDailyProgressState', JSON.stringify(record.studyDailyProgressState || {}));
                 localStorage.setItem('studyTrackerTitle', record.studyTrackerTitle || 'Study Progress Tracker');
-                localStorage.setItem('studyTrackerSubtitle', record.studyTrackerSubtitle || 'Your customizable study plan & progress tracker.');
+                localStorage.setItem('studyTrackerSubtitle', record.studyTrackerSubtitle || 'Your customizable study plan.');
                 localStorage.setItem('studyTrackerFooter', record.studyTrackerFooter || 'Happy studying!');
-                saveTextStateToLocal();
-
-                updateSyncStatus('Pull successful ✓', '#10b981');
                 
-                // If this is a manual pull (not the initial one), re-render smoothly
+                // Now that localStorage is updated, load state from it into the app variables
+                loadStateFromLocal();
+                updateSyncStatus('Pull successful ✓', '#10b981');
+
                 if (withConfirmation) {
                     mainContentContainer.style.transition = 'opacity 0.3s ease-out';
                     mainContentContainer.style.opacity = '0';
                     setTimeout(() => {
                         if (countdownInterval) clearInterval(countdownInterval);
-                        initializeAppUI(); // This re-renders everything
+                        initializeAppUI();
                         mainContentContainer.style.opacity = '1';
                     }, 300);
                 }
-                return true; // Indicate success
-
+                return true;
             } catch (error) {
                 console.error("Failed to pull from cloud:", error);
                 updateSyncStatus(`Pull Error: ${error.message}`, '#ef4444');
-                return false; // Indicate failure
+                return false;
             } finally {
                 if (pullButton) {
                     pullButton.disabled = false;
@@ -305,16 +278,16 @@
             }
         }
 
-        // --- SYNC LOGIC ---: ENDPOINT 2 - Manual Push to Cloud
         async function handlePushToCloud() {
+            // FIX: Gather ALL data from localStorage to push
             const dataToSync = {
-                studyTargetDate: targetDate.toISOString(),
-                studyTasks: tasks,
-                studyProgressState: progressState,
-                studyDailyProgressState: dailyProgressState,
-                studyTrackerTitle: titleElement.textContent,
-                studyTrackerSubtitle: subtitleElement.textContent,
-                studyTrackerFooter: footerElement.textContent
+                studyTargetDate: localStorage.getItem('studyTargetDate'),
+                studyTasks: JSON.parse(localStorage.getItem('studyTasks') || '[]'),
+                studyProgressState: JSON.parse(localStorage.getItem('studyProgressState') || '{}'),
+                studyDailyProgressState: JSON.parse(localStorage.getItem('studyDailyProgressState') || '{}'),
+                studyTrackerTitle: localStorage.getItem('studyTrackerTitle'),
+                studyTrackerSubtitle: localStorage.getItem('studyTrackerSubtitle'),
+                studyTrackerFooter: localStorage.getItem('studyTrackerFooter')
             };
 
             const pushButton = document.getElementById('push-button');
@@ -332,11 +305,9 @@
                     body: JSON.stringify(dataToSync)
                 });
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-                
                 await response.json();
                 updateSyncStatus('Push successful ✓', '#10b981');
-            } catch (error)
-            {
+            } catch (error) {
                 console.error("Failed to push to cloud:", error);
                 updateSyncStatus(`Push Error: ${error.message}`, '#ef4444');
             } finally {
@@ -350,11 +321,8 @@
             if (syncStatusElement) {
                 syncStatusElement.textContent = message;
                 syncStatusElement.style.color = color;
-                
                 setTimeout(() => {
-                    if (syncStatusElement.textContent === message) {
-                        syncStatusElement.textContent = '';
-                    }
+                    if (syncStatusElement.textContent === message) syncStatusElement.textContent = '';
                 }, 5000);
             }
         }
@@ -375,23 +343,18 @@
         function loadStateFromLocal() {
             const savedTargetDate = localStorage.getItem('studyTargetDate');
             targetDate = savedTargetDate ? new Date(savedTargetDate) : new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
-            
-            const savedTasks = localStorage.getItem('studyTasks');
-            tasks = savedTasks ? JSON.parse(savedTasks) : [];
-
-            const savedProgress = localStorage.getItem('studyProgressState');
-            progressState = savedProgress ? JSON.parse(savedProgress) : {};
+            tasks = JSON.parse(localStorage.getItem('studyTasks') || '[]');
+            progressState = JSON.parse(localStorage.getItem('studyProgressState') || '{}');
             
             const lastVisitDate = localStorage.getItem('studyLastVisitDate');
             const todayDate = new Date().toLocaleDateString();
             if (lastVisitDate === todayDate) {
-                const savedDailyProgress = localStorage.getItem('studyDailyProgressState');
-                dailyProgressState = savedDailyProgress ? JSON.parse(savedDailyProgress) : {};
+                dailyProgressState = JSON.parse(localStorage.getItem('studyDailyProgressState') || '{}');
             } else {
                 localStorage.setItem('studyDailyProgressState', JSON.stringify({}));
                 localStorage.setItem('studyLastVisitDate', todayDate);
+                dailyProgressState = {};
             }
-
             syncAndValidateState();
         }
         
@@ -404,12 +367,8 @@
 
         function syncAndValidateState() {
             const taskIds = new Set(tasks.map(t => t.id));
-            Object.keys(progressState).forEach(id => {
-                if (!taskIds.has(id)) delete progressState[id];
-            });
-             Object.keys(dailyProgressState).forEach(id => {
-                if (!taskIds.has(id)) delete dailyProgressState[id];
-            });
+            Object.keys(progressState).forEach(id => { if (!taskIds.has(id)) delete progressState[id]; });
+            Object.keys(dailyProgressState).forEach(id => { if (!taskIds.has(id)) delete dailyProgressState[id]; });
             tasks.forEach(task => {
                 if (progressState[task.id] === undefined) progressState[task.id] = 0;
                 if (dailyProgressState[task.id] === undefined) dailyProgressState[task.id] = 0;
@@ -418,7 +377,6 @@
         
         function render() {
             mainContentContainer.innerHTML = ''; 
-
             const tasksContainer = document.createElement('div');
             tasksContainer.id = 'tasks-container';
             tasksContainer.className = 'space-y-4';
@@ -427,7 +385,6 @@
                  tasksContainer.innerHTML = `<div class="text-center text-gray-500 py-10">No tasks yet. Add one below to get started!</div>`;
             } else {
                 tasks.forEach((task, taskIndex) => {
-                    const taskTotalGoal = task.totalGoal;
                     const taskItem = document.createElement('div');
                     taskItem.className = 'task-item bg-gray-800 rounded-lg shadow-md p-4 flex flex-col gap-4';
                     taskItem.style.animationDelay = `${taskIndex * 50}ms`;
@@ -436,41 +393,31 @@
                             <div class="w-full sm:w-auto flex-grow sm:pr-4">
                                <div class="flex justify-between items-baseline mb-2">
                                     <span class="font-semibold text-lg text-gray-200">${task.name}</span>
-                                    <span id="task-progress-text-${task.id}" class="text-sm font-medium text-gray-400">0 / ${taskTotalGoal}</span>
+                                    <span id="task-progress-text-${task.id}" class="text-sm font-medium text-gray-400">0 / ${task.totalGoal}</span>
                                 </div>
                                 <div class="space-y-2">
                                     <div>
-                                        <div class="flex items-center justify-between">
-                                            <div class="text-xs text-gray-400 mb-1">Daily Goal</div>
-                                            <span id="daily-progress-text-${task.id}" class="text-xs font-medium text-gray-400">0 / 0</span>
-                                        </div>
-                                        <div class="w-full bg-gray-700 rounded-full h-2.5">
-                                            <div id="task-progress-bar-daily-${task.id}" class="progress-bar-fill progress-bar-daily" style="width: 0%"></div>
-                                        </div>
+                                        <div class="flex items-center justify-between"><div class="text-xs text-gray-400 mb-1">Daily Goal</div><span id="daily-progress-text-${task.id}" class="text-xs font-medium text-gray-400">0 / 0</span></div>
+                                        <div class="w-full bg-gray-700 rounded-full h-2.5"><div id="task-progress-bar-daily-${task.id}" class="progress-bar-fill progress-bar-daily" style="width: 0%"></div></div>
                                     </div>
                                     <div>
                                         <div class="text-xs text-gray-400 mb-1">Overall Progress</div>
-                                        <div class="w-full bg-gray-700 rounded-full h-2.5">
-                                            <div id="task-progress-bar-overall-${task.id}" class="progress-bar-fill progress-bar-overall" style="width: 0%"></div>
-                                        </div>
+                                        <div class="w-full bg-gray-700 rounded-full h-2.5"><div id="task-progress-bar-overall-${task.id}" class="progress-bar-fill progress-bar-overall" style="width: 0%"></div></div>
                                     </div>
                                 </div>
                             </div>
                             <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0 self-end sm:self-center">
-                                <button class="control-btn remove-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-rose-600 transition-colors flex items-center justify-center" data-task="${task.id}" title="Remove Task">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                </button>
+                                <button class="control-btn remove-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-rose-600 transition-colors flex items-center justify-center" data-task="${task.id}" title="Remove Task"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                                 <button class="control-btn minus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-red-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="-1" title="Increase remaining count">-</button>
                                 <div class="flex items-center space-x-1">
                                     <span class="text-gray-400 text-sm whitespace-nowrap">Remaining:</span>
                                     <input type="number" class="task-input-remaining w-14 text-center bg-gray-900 border border-gray-600 rounded-md h-8 focus:ring-2 focus:ring-sky-500 focus:border-sky-500" value="0" min="0" data-task="${task.id}">
                                     <span class="text-gray-400">/</span>
-                                    <input type="number" class="task-input-total w-14 text-center bg-gray-900 border border-gray-600 rounded-md h-8 focus:ring-2 focus:ring-sky-500 focus:border-sky-500" value="${taskTotalGoal}" min="0" data-task="${task.id}">
+                                    <input type="number" class="task-input-total w-14 text-center bg-gray-900 border border-gray-600 rounded-md h-8 focus:ring-2 focus:ring-sky-500 focus:border-sky-500" value="${task.totalGoal}" min="0" data-task="${task.id}">
                                 </div>
                                 <button class="control-btn plus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-green-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="1" title="Decrease remaining count">+</button>
                             </div>
-                        </div>
-                    `;
+                        </div>`;
                     tasksContainer.appendChild(taskItem);
                 });
             }
@@ -483,78 +430,58 @@
                         <input type="number" id="new-task-goal" placeholder="Total Goal" class="w-full sm:w-32 bg-gray-900 border border-gray-600 rounded-md h-10 px-3 text-center focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" min="1" required>
                         <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 rounded-md h-10 px-5 font-semibold transition-colors flex items-center justify-center">Add Task</button>
                     </form>
-                </div>
-            `);
-
-             mainContentContainer.insertAdjacentHTML('beforeend', `
+                </div>`);
+            mainContentContainer.insertAdjacentHTML('beforeend', `
                 <div class="target-date-container">
                     <label for="target-date-input" class="block text-lg font-semibold text-gray-300 mb-3">Set Target Deadline</label>
                     <input type="datetime-local" id="target-date-input">
                     <div id="countdown-timer"></div>
-                </div>
-            `);
+                </div>`);
             updateUI();
         }
 
         function updateCountdown() {
             const timerElement = document.getElementById('countdown-timer');
             if (!timerElement) return 1;
-
-            const now = new Date();
-            const difference = targetDate.getTime() - now.getTime();
-
+            const difference = targetDate.getTime() - new Date().getTime();
             if (difference <= 0) {
                 timerElement.innerHTML = `<span class="text-2xl font-bold text-rose-500">Deadline Reached!</span>`;
                 return 0.001;
             }
-
-            const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((difference % (1000 * 60)) / 1000);
-
+            const days = Math.floor(difference / 86400000);
+            const hours = Math.floor((difference % 86400000) / 3600000);
+            const minutes = Math.floor((difference % 3600000) / 60000);
+            const seconds = Math.floor((difference % 60000) / 1000);
             timerElement.innerHTML = `
                 <div class="countdown-segment"><span class="countdown-number">${days}</span><span class="countdown-label">Days</span></div>
                 <div class="countdown-segment"><span class="countdown-number">${hours}</span><span class="countdown-label">Hours</span></div>
                 <div class="countdown-segment"><span class="countdown-number">${minutes}</span><span class="countdown-label">Minutes</span></div>
-                <div class="countdown-segment"><span class="countdown-number">${seconds}</span><span class="countdown-label">Seconds</span></div>
-            `;
-            
-            return difference / (1000 * 60 * 60 * 24);
+                <div class="countdown-segment"><span class="countdown-number">${seconds}</span><span class="countdown-label">Seconds</span></div>`;
+            return difference / 86400000;
         }
 
         function updateUI() {
-            const daysRemaining = updateCountdown();
-            const durationInDays = Math.max(1, daysRemaining);
-
+            const durationInDays = Math.max(1, updateCountdown());
             tasks.forEach(task => {
                 const totalGoal = Number(task.totalGoal);
                 const totalCompleted = Number(progressState[task.id] || 0);
                 const todaysCompleted = Number(dailyProgressState[task.id] || 0);
                 const remaining = totalGoal - totalCompleted;
                 const dailyGoal = Math.ceil((totalGoal - totalCompleted) / durationInDays);
-
                 const overallPercent = totalGoal > 0 ? (totalCompleted / totalGoal) * 100 : 0;
                 const dailyPercent = dailyGoal > 0 ? (todaysCompleted / dailyGoal) * 100 : 0;
                 
-                const remainingInput = document.querySelector(`.task-input-remaining[data-task="${task.id}"]`);
-                const totalInput = document.querySelector(`.task-input-total[data-task="${task.id}"]`);
-                const dailyBar = document.getElementById(`task-progress-bar-daily-${task.id}`);
-                const overallBar = document.getElementById(`task-progress-bar-overall-${task.id}`);
-                const progressText = document.getElementById(`task-progress-text-${task.id}`);
-                const dailyProgressText = document.getElementById(`daily-progress-text-${task.id}`);
-
-                if(remainingInput) remainingInput.value = remaining;
-                if(totalInput) totalInput.value = totalGoal;
-                if(dailyBar) dailyBar.style.width = `${Math.min(100, dailyPercent)}%`;
-                if(overallBar) overallBar.style.width = `${Math.min(100, overallPercent)}%`;
-                if(progressText) progressText.textContent = `${totalCompleted} / ${totalGoal}`;
-                if(dailyProgressText) dailyProgressText.textContent = `${todaysCompleted} / ${dailyGoal < 0 ? 0 : dailyGoal}`;
+                document.querySelector(`.task-input-remaining[data-task="${task.id}"]`).value = remaining;
+                document.querySelector(`.task-input-total[data-task="${task.id}"]`).value = totalGoal;
+                document.getElementById(`task-progress-bar-daily-${task.id}`).style.width = `${Math.min(100, dailyPercent)}%`;
+                document.getElementById(`task-progress-bar-overall-${task.id}`).style.width = `${Math.min(100, overallPercent)}%`;
+                document.getElementById(`task-progress-text-${task.id}`).textContent = `${totalCompleted} / ${totalGoal}`;
+                document.getElementById(`daily-progress-text-${task.id}`).textContent = `${todaysCompleted} / ${dailyGoal < 0 ? 0 : dailyGoal}`;
             });
         }
         
         function attachEventListeners() {
-            mainContentContainer.addEventListener('input', (e) => {
+            mainContentContainer.addEventListener('input', e => {
                 if (e.target.id === 'target-date-input') {
                     const newDate = new Date(e.target.value);
                     if (!isNaN(newDate.getTime())) {
@@ -564,31 +491,20 @@
                     }
                     return;
                 }
-
                 const taskId = e.target.dataset.task;
                 if (taskId) {
                     const task = tasks.find(t => t.id === taskId);
                     if (!task) return;
-                    
                     const oldCompleted = progressState[task.id] || 0;
-
                     if (e.target.classList.contains('task-input-remaining')) {
-                        const remainingValue = parseInt(e.target.value, 10);
-                        if (!isNaN(remainingValue)) {
-                            const totalGoal = Number(task.totalGoal);
-                            const newCompleted = Math.max(0, Math.min(totalGoal - remainingValue, totalGoal));
-                            const delta = newCompleted - oldCompleted;
-                            
-                            progressState[taskId] = newCompleted;
-                            dailyProgressState[taskId] = (dailyProgressState[taskId] || 0) + delta;
-                        }
+                        const newCompleted = Math.max(0, Math.min(Number(task.totalGoal) - parseInt(e.target.value, 10), Number(task.totalGoal)));
+                        progressState[taskId] = newCompleted;
+                        dailyProgressState[taskId] = (dailyProgressState[taskId] || 0) + (newCompleted - oldCompleted);
                     } else if (e.target.classList.contains('task-input-total')) {
-                        const newTotalGoal = parseInt(e.target.value, 10);
-                        if (!isNaN(newTotalGoal) && newTotalGoal >= 0) {
-                            task.totalGoal = newTotalGoal;
-                            if(newTotalGoal < progressState[taskId]) {
-                                progressState[taskId] = newTotalGoal;
-                            }
+                        const newTotal = parseInt(e.target.value, 10);
+                        if (!isNaN(newTotal) && newTotal >= 0) {
+                            task.totalGoal = newTotal;
+                            if (newTotal < progressState[taskId]) progressState[taskId] = newTotal;
                         }
                     }
                     saveStateToLocal();
@@ -596,49 +512,35 @@
                 }
             });
 
-            mainContentContainer.addEventListener('click', (e) => {
+            mainContentContainer.addEventListener('click', e => {
                 const controlBtn = e.target.closest('.control-btn');
-
-                if (controlBtn) {
-                    const { task: taskId, change } = controlBtn.dataset;
+                if (!controlBtn) return;
+                const { task: taskId, change } = controlBtn.dataset;
+                if (change) {
+                    const changeAmount = parseInt(change, 10);
                     const task = tasks.find(t => t.id === taskId);
                     if (!task) return;
-
-                    if (change) {
-                        const changeAmount = parseInt(change, 10);
-                        const totalGoal = Number(task.totalGoal);
-
-                        let currentCompleted = progressState[taskId] || 0;
-                        let newCompleted = currentCompleted + changeAmount;
-                        progressState[taskId] = Math.max(0, Math.min(newCompleted, totalGoal));
-                        
-                        dailyProgressState[taskId] = (dailyProgressState[taskId] || 0) + changeAmount;
-                        dailyProgressState[taskId] = Math.max(0, dailyProgressState[taskId]);
-
-                    } else if (controlBtn.classList.contains('remove-btn')) {
-                        tasks = tasks.filter(t => t.id !== taskId);
-                        delete progressState[taskId];
-                        delete dailyProgressState[taskId];
-                        render(); 
-                    }
-                    saveStateToLocal();
-                    updateUI();
+                    progressState[taskId] = Math.max(0, Math.min((progressState[taskId] || 0) + changeAmount, Number(task.totalGoal)));
+                    dailyProgressState[taskId] = Math.max(0, (dailyProgressState[taskId] || 0) + changeAmount);
+                } else if (controlBtn.classList.contains('remove-btn')) {
+                    tasks = tasks.filter(t => t.id !== taskId);
+                    delete progressState[taskId];
+                    delete dailyProgressState[taskId];
+                    render();
                 }
+                saveStateToLocal();
+                updateUI();
             });
 
-            mainContentContainer.addEventListener('submit', (e) => {
+            mainContentContainer.addEventListener('submit', e => {
                 if (e.target.id === 'add-task-form') {
                     e.preventDefault();
                     const nameInput = document.getElementById('new-task-name');
                     const goalInput = document.getElementById('new-task-goal');
                     const name = nameInput.value.trim();
                     const goal = parseInt(goalInput.value, 10);
-
                     if (name && !isNaN(goal) && goal > 0) {
-                        const newTask = { id: `task-${Date.now()}`, name, totalGoal: goal };
-                        tasks.push(newTask);
-                        progressState[newTask.id] = 0;
-                        dailyProgressState[newTask.id] = 0;
+                        tasks.push({ id: `task-${Date.now()}`, name, totalGoal: goal });
                         saveStateToLocal();
                         render();
                         nameInput.value = '';
@@ -654,15 +556,12 @@
         
         function typeWriter(element, text, callback) {
             let i = 0;
-            const speed = 50;
             element.innerHTML = '';
             element.classList.add('typing-cursor');
-
             function type() {
                 if (i < text.length) {
-                    element.innerHTML += text.charAt(i);
-                    i++;
-                    setTimeout(type, speed);
+                    element.innerHTML += text.charAt(i++);
+                    setTimeout(type, 50);
                 } else {
                     element.classList.remove('typing-cursor');
                     element.setAttribute('contenteditable', 'true');
@@ -676,10 +575,7 @@
             mainContentContainer.innerHTML = ''; 
             render();
             attachEventListeners();
-            
-            // FIX: Make sync buttons visible after the main UI is ready
             document.getElementById('sync-container').style.display = 'flex';
-
             const dateInput = document.getElementById('target-date-input');
             if (dateInput) {
                 const yyyy = targetDate.getFullYear();
@@ -689,12 +585,9 @@
                 const min = String(targetDate.getMinutes()).padStart(2, '0');
                 dateInput.value = `${yyyy}-${mm}-${dd}T${hh}:${min}`;
             }
-            
             if (countdownInterval) clearInterval(countdownInterval);
             countdownInterval = setInterval(updateUI, 1000);
-
             const { title, subtitle, footer } = getSavedTexts();
-
             if (!titleElement.hasAttribute('contenteditable')) {
                 typeWriter(titleElement, title, () => {
                     typeWriter(subtitleElement, subtitle, () => {
@@ -712,6 +605,8 @@
         titleElement.addEventListener('blur', saveTextStateToLocal);
         subtitleElement.addEventListener('blur', saveTextStateToLocal);
         footerElement.addEventListener('blur', saveTextStateToLocal);
+
+        initialLoad();
     });
 </script>
 </body>

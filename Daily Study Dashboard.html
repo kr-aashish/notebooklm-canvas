@@ -119,28 +119,9 @@
             padding: 1.25rem;
             margin-top: 1.5rem;
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
-        }
-        .date-pickers {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-        }
-        .date-picker-group {
             text-align: center;
-            animation: fadeInSlideUp 0.6s ease-out forwards;
         }
-         .date-picker-group:last-child {
-            animation-delay: 0.2s;
-        }
-        .date-picker-group label {
-             display: block;
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: #d1d5db;
-            margin-bottom: 0.75rem;
-        }
-        .date-picker-group input {
+        #target-date-input {
             background-color: #111827;
             border: 1px solid #4b5563;
             border-radius: 0.375rem;
@@ -153,7 +134,7 @@
             display: flex;
             justify-content: center;
             gap: 1.5rem;
-            margin-top: 1.5rem;
+            margin-top: 1rem;
             background-image: linear-gradient(to right, #10b981, #34d399);
             -webkit-background-clip: text;
             background-clip: text;
@@ -228,50 +209,6 @@
             color: #6b7280; /* gray-500 */
             font-weight: 600;
         }
-        
-        /* --- Current Day Display --- */
-        #current-day-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .circular-progress {
-            position: relative;
-            height: 120px;
-            width: 120px;
-            border-radius: 50%;
-            background: conic-gradient(#818cf8 0deg, #374151 0deg); /* indigo-400, gray-700 */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.5s;
-            animation: fadeInSlideUp 0.8s ease-out forwards;
-            animation-delay: 0.1s;
-        }
-        .circular-progress::before {
-            content: "";
-            position: absolute;
-            height: 100px;
-            width: 100px;
-            border-radius: 50%;
-            background-color: #1f2937; /* gray-800 */
-        }
-        .day-number-container {
-            position: relative;
-            color: #d1d5db;
-            text-align: center;
-        }
-        .day-label {
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #9ca3af;
-        }
-        .day-number {
-            font-size: 2.5rem;
-            font-weight: 700;
-            line-height: 1.1;
-        }
     </style>
 </head>
 <body class="text-gray-200 antialiased">
@@ -322,7 +259,6 @@
         let progressState = {};
         let dailyProgressState = {};
         let dailyGoals = {};
-        let startDate = new Date();
         let targetDate = new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
         let countdownInterval = null;
 
@@ -361,8 +297,7 @@
                 const record = data.record || data;
                 if (Object.keys(record).length === 0) throw new Error("Bin is empty.");
 
-                localStorage.setItem('studyStartDate', record.studyStartDate || new Date().toISOString());
-                localStorage.setItem('studyTargetDate', record.studyTargetDate || new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000).toISOString());
+                localStorage.setItem('studyTargetDate', record.studyTargetDate || new Date().toISOString());
                 localStorage.setItem('studyTasks', JSON.stringify(record.studyTasks || []));
                 localStorage.setItem('studyProgressState', JSON.stringify(record.studyProgressState || {}));
                 localStorage.setItem('studyDailyProgressState', JSON.stringify(record.studyDailyProgressState || {}));
@@ -397,7 +332,6 @@
 
         async function handlePushToCloud() {
             const dataToSync = {
-                studyStartDate: localStorage.getItem('studyStartDate'),
                 studyTargetDate: localStorage.getItem('studyTargetDate'),
                 studyTasks: JSON.parse(localStorage.getItem('studyTasks') || '[]'),
                 studyProgressState: JSON.parse(localStorage.getItem('studyProgressState') || '{}'),
@@ -445,7 +379,6 @@
         }
 
         function saveStateToLocal() {
-            localStorage.setItem('studyStartDate', startDate.toISOString());
             localStorage.setItem('studyTargetDate', targetDate.toISOString());
             localStorage.setItem('studyTasks', JSON.stringify(tasks));
             localStorage.setItem('studyProgressState', JSON.stringify(progressState));
@@ -459,23 +392,18 @@
         }
 
         function loadStateFromLocal() {
-            const savedStartDate = localStorage.getItem('studyStartDate');
-            startDate = savedStartDate ? new Date(savedStartDate) : new Date();
-
             const savedTargetDate = localStorage.getItem('studyTargetDate');
             targetDate = savedTargetDate ? new Date(savedTargetDate) : new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
-            
             tasks = JSON.parse(localStorage.getItem('studyTasks') || '[]');
             progressState = JSON.parse(localStorage.getItem('studyProgressState') || '{}');
             
-            const lastVisitDay = Math.floor((new Date().getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-            const savedLastVisitDay = localStorage.getItem('studyLastVisitDay');
-
-            if (savedLastVisitDay && parseInt(savedLastVisitDay, 10) === lastVisitDay) {
+            const lastVisitDate = localStorage.getItem('studyLastVisitDate');
+            const todayDate = new Date().toLocaleDateString();
+            if (lastVisitDate === todayDate) {
                 dailyProgressState = JSON.parse(localStorage.getItem('studyDailyProgressState') || '{}');
             } else {
                 localStorage.setItem('studyDailyProgressState', JSON.stringify({}));
-                localStorage.setItem('studyLastVisitDay', lastVisitDay);
+                localStorage.setItem('studyLastVisitDate', todayDate);
                 dailyProgressState = {};
             }
             syncAndValidateState();
@@ -499,11 +427,8 @@
         }
         
         function calculateAllDailyGoals() {
-            const totalDurationMillis = targetDate.getTime() - startDate.getTime();
-            if (totalDurationMillis <= 0) return;
-
-            const durationInDays = Math.ceil(totalDurationMillis / (1000 * 60 * 60 * 24));
-            
+            const daysRemaining = getDaysRemaining();
+            const durationInDays = Math.max(1, daysRemaining);
             tasks.forEach(task => {
                 dailyGoals[task.id] = Math.ceil(Number(task.totalGoal) / durationInDays);
             });
@@ -578,24 +503,8 @@
                 </div>`);
             mainContentContainer.insertAdjacentHTML('beforeend', `
                 <div class="target-date-container">
-                    <div class="date-pickers">
-                        <div class="date-picker-group">
-                            <label for="start-date-input">Start Date</label>
-                            <input type="datetime-local" id="start-date-input">
-                        </div>
-                        <div id="current-day-container">
-                            <div class="circular-progress">
-                                <div class="day-number-container">
-                                    <div class="day-label">Day</div>
-                                    <div class="day-number" id="current-day-number">1</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="date-picker-group">
-                            <label for="target-date-input">Target Deadline</label>
-                            <input type="datetime-local" id="target-date-input">
-                        </div>
-                    </div>
+                    <label for="target-date-input" class="block text-lg font-semibold text-gray-300 mb-3">Set Target Deadline</label>
+                    <input type="datetime-local" id="target-date-input">
                     <div id="countdown-timer"></div>
                 </div>`);
             updateUI();
@@ -634,27 +543,6 @@
         function updateUI() {
             updateCountdown();
 
-            // Update current day display
-            const now = new Date();
-            const timeSinceStart = now.getTime() - startDate.getTime();
-            if (timeSinceStart >= 0) {
-                const dayMillis = 1000 * 60 * 60 * 24;
-                const currentDayNumber = Math.floor(timeSinceStart / dayMillis) + 1;
-                const progressOfDay = (timeSinceStart % dayMillis) / dayMillis;
-                const angle = progressOfDay * 360;
-
-                const circularProgress = document.querySelector('.circular-progress');
-                const dayNumberEl = document.getElementById('current-day-number');
-
-                if (circularProgress) {
-                    circularProgress.style.background = `conic-gradient(#818cf8 ${angle}deg, #374151 ${angle}deg)`;
-                }
-                if (dayNumberEl) {
-                    dayNumberEl.textContent = currentDayNumber;
-                }
-            }
-
-
             tasks.forEach(task => {
                 const totalGoal = Number(task.totalGoal);
                 const totalCompleted = Number(progressState[task.id] || 0);
@@ -686,17 +574,14 @@
         
         function attachEventListeners() {
             mainContentContainer.addEventListener('input', e => {
-                if (e.target.id === 'start-date-input' || e.target.id === 'target-date-input') {
-                    if (e.target.id === 'start-date-input') {
-                         const newDate = new Date(e.target.value);
-                         if (!isNaN(newDate.getTime())) startDate = newDate;
-                    } else {
-                         const newDate = new Date(e.target.value);
-                         if (!isNaN(newDate.getTime())) targetDate = newDate;
+                if (e.target.id === 'target-date-input') {
+                    const newDate = new Date(e.target.value);
+                    if (!isNaN(newDate.getTime())) {
+                        targetDate = newDate;
+                        calculateAllDailyGoals(); // Recalculate daily goals on date change
+                        saveStateToLocal();
+                        updateUI();
                     }
-                    calculateAllDailyGoals();
-                    saveStateToLocal();
-                    updateUI();
                     return;
                 }
 
@@ -722,7 +607,7 @@
                             if (newTotal < progressState[taskId]) {
                                 progressState[taskId] = newTotal;
                             }
-                            calculateAllDailyGoals();
+                            calculateAllDailyGoals(); // Recalculate daily goals when total changes
                         }
                     }
                     saveStateToLocal();
@@ -770,7 +655,7 @@
                         tasks.push(newTask);
                         progressState[newTask.id] = 0;
                         dailyProgressState[newTask.id] = 0;
-                        calculateAllDailyGoals();
+                        calculateAllDailyGoals(); // Calculate goal for new task
                         saveStateToLocal();
                         render();
                         nameInput.value = '';
@@ -802,15 +687,6 @@
             type();
         }
 
-        function formatDateForInput(date) {
-            const yyyy = date.getFullYear();
-            const mm = String(date.getMonth() + 1).padStart(2, '0');
-            const dd = String(date.getDate()).padStart(2, '0');
-            const hh = String(date.getHours()).padStart(2, '0');
-            const min = String(date.getMinutes()).padStart(2, '0');
-            return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
-        }
-
         function initializeAppUI() {
             mainContentContainer.innerHTML = ''; 
             loadStateFromLocal();
@@ -818,10 +694,15 @@
             render();
             attachEventListeners();
             document.getElementById('sync-container').style.display = 'flex';
-            
-            document.getElementById('start-date-input').value = formatDateForInput(startDate);
-            document.getElementById('target-date-input').value = formatDateForInput(targetDate);
-
+            const dateInput = document.getElementById('target-date-input');
+            if (dateInput) {
+                const yyyy = targetDate.getFullYear();
+                const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(targetDate.getDate()).padStart(2, '0');
+                const hh = String(targetDate.getHours()).padStart(2, '0');
+                const min = String(targetDate.getMinutes()).padStart(2, '0');
+                dateInput.value = `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+            }
             if (countdownInterval) clearInterval(countdownInterval);
             countdownInterval = setInterval(updateUI, 1000);
             const { title, subtitle, footer } = getSavedTexts();
@@ -848,4 +729,3 @@
 </script>
 </body>
 </html>
-

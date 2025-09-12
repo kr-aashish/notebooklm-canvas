@@ -3,9 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jira</title>
+    <title>Anki Study Dashboard</title>
 
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="A beautiful and interactive study progress tracker for Anki cards and learning goals">
+    <meta name="theme-color" content="#10b981">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Anki Dashboard">
+    <meta name="msapplication-TileColor" content="#111827">
+    <meta name="msapplication-config" content="./browserconfig.xml">
+    
+    <!-- PWA Icons and Manifest -->
+    <link rel="manifest" href="./manifest.json">
     <link rel="icon" href="https://pbs.twimg.com/profile_images/1785701767357120512/d0vRt0Gk_400x400.png">
+    <link rel="apple-touch-icon" href="https://pbs.twimg.com/profile_images/1785701767357120512/d0vRt0Gk_400x400.png">
+    <link rel="shortcut icon" href="https://pbs.twimg.com/profile_images/1785701767357120512/d0vRt0Gk_400x400.png">
 
     <!-- <link rel="apple-touch-icon" type="image/svg+xml" href="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jira/jira-original.svg">
     <link rel="icon" type="image/svg+xml" href="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jira/jira-original.svg">
@@ -713,6 +726,29 @@
 <div id="hover-backdrop"></div>
 
 <div class="container mx-auto max-w-4xl p-4 sm:p-6 md:p-8">
+    <!-- PWA Install Banner -->
+    <div id="pwa-install-banner" class="fixed top-0 left-0 right-0 bg-gradient-to-r from-emerald-600 to-cyan-600 text-white p-3 transform -translate-y-full transition-transform duration-300 z-50 shadow-lg" style="display: none;">
+        <div class="flex items-center justify-between max-w-4xl mx-auto">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                    📚
+                </div>
+                <div>
+                    <div class="font-semibold">Install Anki Dashboard</div>
+                    <div class="text-sm opacity-90">Get the full app experience</div>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button id="pwa-install-btn" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg font-semibold transition-colors">
+                    Install
+                </button>
+                <button id="pwa-dismiss-btn" class="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg transition-colors">
+                    ×
+                </button>
+            </div>
+        </div>
+    </div>
+
     <header class="text-center mb-8">
         <h1 class="text-4xl sm:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400 pb-2 min-h-[56px] sm:min-h-[72px]"></h1>
         <p class="text-gray-400 mt-2 text-lg min-h-[28px]"></p>
@@ -1374,6 +1410,131 @@
         // REMOVED: footerElement event listener
 
         initialLoad();
+
+        // --- PWA Service Worker Registration ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((registration) => {
+                        console.log('[PWA] Service Worker registered successfully:', registration.scope);
+                        
+                        // Check for updates
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New content is available
+                                    showUpdateAvailable();
+                                }
+                            });
+                        });
+                    })
+                    .catch((error) => {
+                        console.log('[PWA] Service Worker registration failed:', error);
+                    });
+            });
+        }
+
+        // --- PWA Install Prompt Handling ---
+        let deferredPrompt;
+        const installBanner = document.getElementById('pwa-install-banner');
+        const installBtn = document.getElementById('pwa-install-btn');
+        const dismissBtn = document.getElementById('pwa-dismiss-btn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('[PWA] Install prompt triggered');
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Check if user has previously dismissed the install prompt
+            const dismissedTime = localStorage.getItem('pwa-install-dismissed');
+            const now = Date.now();
+            const oneWeek = 7 * 24 * 60 * 60 * 1000;
+            
+            if (!dismissedTime || (now - parseInt(dismissedTime)) > oneWeek) {
+                showInstallBanner();
+            }
+        });
+
+        function showInstallBanner() {
+            if (installBanner) {
+                installBanner.style.display = 'block';
+                setTimeout(() => {
+                    installBanner.style.transform = 'translateY(0)';
+                }, 100);
+            }
+        }
+
+        function hideInstallBanner() {
+            if (installBanner) {
+                installBanner.style.transform = 'translateY(-100%)';
+                setTimeout(() => {
+                    installBanner.style.display = 'none';
+                }, 300);
+            }
+        }
+
+        if (installBtn) {
+            installBtn.addEventListener('click', async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    console.log('[PWA] Install prompt outcome:', outcome);
+                    
+                    if (outcome === 'accepted') {
+                        console.log('[PWA] User accepted the install prompt');
+                    } else {
+                        console.log('[PWA] User dismissed the install prompt');
+                        localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+                    }
+                    
+                    deferredPrompt = null;
+                    hideInstallBanner();
+                }
+            });
+        }
+
+        if (dismissBtn) {
+            dismissBtn.addEventListener('click', () => {
+                localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+                hideInstallBanner();
+            });
+        }
+
+        // Listen for app installation
+        window.addEventListener('appinstalled', () => {
+            console.log('[PWA] App was installed');
+            hideInstallBanner();
+            updateSyncStatus('App installed successfully! 🎉', '#10b981');
+        });
+
+        // Show update notification
+        function showUpdateAvailable() {
+            const updateNotification = document.createElement('div');
+            updateNotification.className = 'fixed bottom-4 right-4 bg-blue-600 text-white p-4 rounded-lg shadow-lg z-50';
+            updateNotification.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div>🔄</div>
+                    <div>
+                        <div class="font-semibold">Update Available</div>
+                        <div class="text-sm opacity-90">A new version is ready</div>
+                    </div>
+                    <button onclick="window.location.reload()" class="bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-sm">
+                        Update
+                    </button>
+                    <button onclick="this.parentElement.parentElement.remove()" class="bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-sm">
+                        ×
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(updateNotification);
+            
+            setTimeout(() => {
+                if (updateNotification.parentElement) {
+                    updateNotification.remove();
+                }
+            }, 10000);
+        }
 
         // --- NEW: Intersection Observer for beautiful scroll animation ---
         const jiraCard = document.querySelector('.glossy-jira-card');

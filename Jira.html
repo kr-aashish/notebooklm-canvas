@@ -596,8 +596,24 @@
             }
         }
         
-        /* Tablet adjustments (641px to 1024px) */
-        @media (min-width: 641px) and (max-width: 1024px) {
+        /* Disable Netflix hover on ALL touch devices (more reliable) */
+        @media (hover: none) and (pointer: coarse) {
+            .task-item:hover .task-card {
+                transform: none !important;
+                box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1) !important;
+            }
+            
+            #hover-backdrop {
+                display: none !important;
+            }
+            
+            .task-item .task-card {
+                transition: none !important;
+            }
+        }
+
+        /* Tablet adjustments (641px to 1280px) */
+        @media (min-width: 641px) and (max-width: 1280px) {
             .container {
                 padding: 1.5rem !important;
             }
@@ -629,9 +645,20 @@
                 gap: 1.25rem !important;
             }
             
-            /* Moderate hover effects on tablets */
+            /* Disable Netflix hover effects on tablets too */
             .task-item:hover .task-card {
-                transform: scale(1.3) !important;
+                transform: none !important;
+                box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1) !important;
+            }
+            
+            /* Disable hover backdrop on tablets */
+            #hover-backdrop {
+                display: none !important;
+            }
+            
+            /* Disable hover transitions on tablets */
+            .task-item .task-card {
+                transition: none !important;
             }
             
             /* Footer card - keep horizontal layout but adjust spacing */

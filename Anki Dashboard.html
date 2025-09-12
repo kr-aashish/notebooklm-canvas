@@ -1242,10 +1242,14 @@
 
             // NEW: Event listeners for the hover backdrop effect
             const backdrop = document.getElementById('hover-backdrop');
+            let currentlyHoveredTask = null;
+            
             if (mainContentContainer && backdrop) {
                 mainContentContainer.addEventListener('mouseover', (e) => {
-                    if (e.target.closest('.task-item')) {
+                    const taskItem = e.target.closest('.task-item');
+                    if (taskItem) {
                         backdrop.classList.add('visible');
+                        currentlyHoveredTask = taskItem;
                     }
                 });
 
@@ -1255,9 +1259,55 @@
                     const taskItem = e.target.closest('.task-item');
                     if (taskItem && !taskItem.contains(e.relatedTarget)) {
                         backdrop.classList.remove('visible');
+                        currentlyHoveredTask = null;
                     }
                 });
             }
+
+            // NEW: Keyboard shortcuts for hovered tasks
+            document.addEventListener('keydown', (e) => {
+                // Only work when a task is currently hovered/enlarged
+                if (!currentlyHoveredTask) return;
+                
+                // Prevent default behavior and stop propagation to avoid conflicts
+                if (e.key === '+' || e.key === '=' || e.key === '-' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                
+                let changeAmount = 0;
+                if (e.key === '+' || e.key === '=' || e.key === ' ') {
+                    // + key, = key (unshifted +), or spacebar increases count
+                    changeAmount = 1;
+                } else if (e.key === '-') {
+                    // - key decreases count
+                    changeAmount = -1;
+                } else {
+                    return; // Not a key we care about
+                }
+                
+                // Find the task data from the hovered task item
+                const plusBtn = currentlyHoveredTask.querySelector('.plus-btn');
+                const minusBtn = currentlyHoveredTask.querySelector('.minus-btn');
+                
+                if (!plusBtn || !minusBtn) return;
+                
+                const taskId = plusBtn.dataset.task || minusBtn.dataset.task;
+                const task = tasks.find(t => t.id === taskId);
+                if (!task) return;
+                
+                // Use the same logic as the control buttons
+                const totalGoal = Number(task.totalGoal);
+                const currentCompleted = progressState[taskId] || 0;
+                const newCompleted = currentCompleted + changeAmount;
+                
+                if (newCompleted >= 0 && newCompleted <= totalGoal) {
+                    progressState[taskId] = newCompleted;
+                    dailyProgressState[taskId] = Math.max(0, (dailyProgressState[taskId] || 0) + changeAmount);
+                    saveStateToLocal();
+                    updateUI();
+                }
+            });
             
             // Listeners for cloud sync buttons
             document.getElementById('pull-button').addEventListener('click', () => handlePullFromCloud(true));

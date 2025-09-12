@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anki Study Dashboard</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="A beautiful and interactive study progress tracker for Anki cards and learning goals">
+    <meta name="theme-color" content="#10b981">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Anki Dashboard">
+    <meta name="msapplication-TileColor" content="#111827">
+    <meta name="msapplication-config" content="./browserconfig.xml">
+    
+    <!-- PWA Icons and Manifest -->
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" href="https://pbs.twimg.com/profile_images/1785701767357120512/d0vRt0Gk_400x400.png">
+    <link rel="apple-touch-icon" href="https://pbs.twimg.com/profile_images/1785701767357120512/d0vRt0Gk_400x400.png">
+    <link rel="shortcut icon" href="https://pbs.twimg.com/profile_images/1785701767357120512/d0vRt0Gk_400x400.png">
+
+    <!-- <link rel="apple-touch-icon" type="image/svg+xml" href="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jira/jira-original.svg">
+    <link rel="icon" type="image/svg+xml" href="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jira/jira-original.svg">
+    <link rel="mask-icon" type="image/svg+xml" href="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jira/jira-original.svg" color="#2684ff"> -->
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style> 
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Tailwind gray-900 */
+        }
+        /* --- Custom Scrollbar --- */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        
+        /* --- Entry Animation --- */
+        @keyframes fadeInSlideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .task-item, .add-task-form-container, .target-date-container { animation: fadeInSlideUp 0.6s ease-out forwards; }
+        
+        /* --- Enhanced Netflix Hover Effect for Tasks (conflict-free) --- */
+        .task-item {
+            position: relative;
+            z-index: 1;               /* so we can raise it on hover */
+            isolation: isolate;       /* ensures z-index stacking behaves */
+        }
+
+        /* the visual card that we scale */
+        .task-item .task-card {
+            transition: transform 400ms cubic-bezier(0.25, 0.8, 0.25, 1),
+                        box-shadow 400ms cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform-origin: center;
+            will-change: transform;
+        }
+
+        .task-item:hover { 
+            z-index: 20; 
+        }
+
+        .task-item:hover .task-card {
+            /* Massive Netflix-style zoom taking almost full horizontal space */
+            transform: scale(1.6);
+            box-shadow: 
+                0 50px 100px rgba(0,0,0,0.5), 
+                0 25px 50px rgba(0,0,0,0.4),
+                0 0 0 1px rgba(255,255,255,0.1),
+                0 0 80px rgba(56, 189, 248, 0.2); /* sky-400 glow */
+        }
+
+        /* --- Hover Backdrop --- */
+        #hover-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 50% 50%, rgba(29, 78, 216, 0.15) 0%, rgba(17, 24, 39, 0) 70%);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px); /* Safari support */
+            opacity: 0;
+            z-index: 15; /* between normal content (1) and hovered card (20) */
+            pointer-events: none;
+            transition: opacity 400ms cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        #hover-backdrop.visible {
+            opacity: 1;
+        }
+
+        /* --- Scroll-Triggered Sequential Animations --- */
+        .task-item .task-card {
+            transition: transform 400ms cubic-bezier(0.25, 0.8, 0.25, 1),
+                        box-shadow 400ms cubic-bezier(0.25, 0.8, 0.25, 1),
+                        opacity 600ms ease-out;
+        }
+
+        /* Initial state for scroll animations */
+        .task-item.scroll-animate {
+            opacity: 1;
+        }
+
+        .task-item.scroll-animate .task-card {
+            transform: scale(0.95);
+            opacity: 0.7;
+        }
+
+        /* Scroll zoom-in animation */
+        .task-item.scroll-zoom-in .task-card {
+            transform: scale(1.08);
+            box-shadow: 
+                0 20px 40px rgba(0,0,0,0.3),
+                0 10px 20px rgba(0,0,0,0.2),
+                0 0 20px rgba(56, 189, 248, 0.15);
+            opacity: 1;
+        }
+
+        /* Scroll zoom-out animation (back to normal) */
+        .task-item.scroll-zoom-out .task-card {
+            transform: scale(1);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+            opacity: 1;
+        }
+
+        /* (Optional) accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            .task-item .task-card { transition: none !important; }
+            .task-item.scroll-animate .task-card,
+            .task-item.scroll-zoom-in .task-card,
+            .task-item.scroll-zoom-out .task-card { 
+                transform: none !important; 
+                opacity: 1 !important;
+            }
+        }
+        
+        /* --- Progress Bar --- */
+        .progress-bar-fill { 
+            transition: width 0.5s ease-in-out; 
+            height: 100%;
+            border-radius: 9999px;
+        }
+        .progress-bar-daily {
+             background-image: linear-gradient(to right, #818cf8, #a78bfa); /* Indigo-400 to Violet-400 */
+        }
+        .progress-bar-overall {
+            background-image: linear-gradient(to right, #34d399, #38bdf8); /* Emerald-400 to Sky-400 */
+        }
+        
+        /* --- Number & DateTime Input Customization --- */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] { 
+            -moz-appearance: textfield; 
+            appearance: textfield; 
+        }
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.8);
+            cursor: pointer;
+        }
+
+        /* --- Beautiful Loading Spinner --- */
+        .loader {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            position: relative;
+            animation: rotate 1.2s linear infinite;
+            margin: 5rem auto;
+        }
+        .loader::before, .loader::after {
+            content: "";
+            box-sizing: border-box;
+            position: absolute;
+            inset: 0px;
+            border-radius: 50%;
+            border: 5px solid #1f2937; /* gray-800 */
+            animation: prixClipFix 2s linear infinite;
+        }
+        .loader::after {
+            border-color: #38bdf8; /* sky-400 */
+            animation: prixClipFix 2s linear infinite, rotate 0.5s linear infinite reverse;
+            inset: 6px;
+        }
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes prixClipFix {
+            0%   { clip-path: polygon(50% 50%, 0 0, 0 0, 0 0, 0 0, 0 0) }
+            25%  { clip-path: polygon(50% 50%, 0 0, 100% 0, 100% 0, 100% 0, 100% 0) }
+            50%  { clip-path: polygon(50% 50%, 0 0, 100% 0, 100% 100%, 100% 100%, 100% 100%) }
+            75%  { clip-path: polygon(50% 50%, 0 0, 100% 0, 100% 100%, 0 100%, 0 100%) }
+            100% { clip-path: polygon(50% 50%, 0 0, 100% 0, 100% 100%, 0 100%, 0 0) }
+        }
+
+        /* --- Typewriter Animation --- */
+        @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: #38bdf8; } /* sky-400 */
+        }
+        .typing-cursor {
+            border-right: .1em solid #38bdf8;
+            animation: blink-caret .75s step-end infinite;
+            white-space: nowrap; /* Keeps cursor at the end */
+        }
+
+        /* --- Editable Content Styling --- */
+        [contenteditable="true"]:hover {
+            outline: 2px dashed #4b5563; /* Tailwind gray-600 */
+            border-radius: 4px;
+        }
+        [contenteditable="true"]:focus {
+            outline: 2px solid #38bdf8; /* Tailwind sky-400 */
+            background-color: #1f2937; /* Tailwind gray-800 */
+            border-radius: 4px;
+        }
+
+        /* --- Beautiful Target Date Styling --- */
+        .target-date-container {
+            background: #1f2937;
+            border-radius: 0.5rem;
+            padding: 1.25rem;
+            margin-top: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+        }
+        .date-pickers {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+        .date-picker-group {
+            text-align: center;
+            animation: fadeInSlideUp 0.6s ease-out forwards;
+        }
+         .date-picker-group:last-child {
+            animation-delay: 0.2s;
+        }
+        .date-picker-group label {
+             display: block;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #d1d5db;
+            margin-bottom: 0.75rem;
+        }
+        .date-picker-group input {
+            background-color: #111827;
+            border: 1px solid #4b5563;
+            border-radius: 0.375rem;
+            padding: 0.5rem 0.75rem;
+            color: #e5e7eb;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        #countdown-timer {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+            background-image: linear-gradient(to right, #10b981, #34d399);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .countdown-segment {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .countdown-number {
+            font-size: 2.25rem; /* text-4xl */
+            font-weight: 700; /* font-bold */
+            line-height: 1;
+        }
+        .countdown-label {
+            font-size: 0.75rem; /* text-xs */
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #9ca3af; /* gray-400 */
+        }
+
+        /* --- Beautiful Progress Display --- */
+        .progress-display {
+            background: #374151; /* gray-700 */
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+        }
+        .progress-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+        }
+        .stat-item .label {
+            color: #9ca3af; /* gray-400 */
+            font-size: 0.75rem;
+        }
+        .stat-item .value {
+            color: #d1d5db; /* gray-300 */
+            font-weight: 600;
+        }
+        .stat-item .value.completed {
+            color: #34d399; /* emerald-400 */
+        }
+
+        /* --- Beautiful Input Group --- */
+        .input-group {
+            display: flex;
+            align-items: center;
+            background-color: #111827;
+            border: 1px solid #4b5563;
+            border-radius: 0.375rem;
+            padding: 0 0.5rem;
+        }
+        .input-group:focus-within {
+            border-color: #34d399;
+            box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.3);
+        }
+        .input-group input {
+            background: transparent;
+            border: none;
+            outline: none;
+            text-align: center;
+            color: #e5e7eb;
+            font-weight: 500;
+            width: 4rem; /* w-16 */
+            height: 2.25rem; /* h-9 */
+        }
+        .input-group .separator {
+            color: #6b7280; /* gray-500 */
+            font-weight: 600;
+        }
+        
+        /* --- Current Day Display --- */
+        #current-day-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .circular-progress {
+            position: relative;
+            height: 120px;
+            width: 120px;
+            border-radius: 50%;
+            background: conic-gradient(#818cf8 0deg, #374151 0deg); /* indigo-400, gray-700 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.5s;
+            animation: fadeInSlideUp 0.8s ease-out forwards;
+            animation-delay: 0.1s;
+        }
+        .circular-progress::before {
+            content: "";
+            position: absolute;
+            height: 100px;
+            width: 100px;
+            border-radius: 50%;
+            background-color: #1f2937; /* gray-800 */
+        }
+        .day-number-container {
+            position: relative;
+            color: #d1d5db;
+            text-align: center;
+        }
+        .day-label {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #9ca3af;
+        }
+        .day-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            line-height: 1.1;
+        }
+
+        /* --- Glossy Animated Card --- */
+        @keyframes subtle-shimmer {
+            0% { transform: translateX(-100%) skewX(-15deg); }
+            100% { transform: translateX(200%) skewX(-15deg); }
+        }
+
+        .glossy-jira-card {
+            background: linear-gradient(145deg, #374151, #1f2937); /* gray-700 to gray-800 */
+            border: 1px solid #4b5563;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2), inset 0 1px 1px rgba(255,255,255,0.05);
+            position: relative;
+            overflow: hidden;
+            /* UPDATED: Set initial state for scroll animation */
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+
+        /* NEW: Class to trigger the animation */
+        .glossy-jira-card.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .glossy-jira-card:hover {
+            transform: translateY(-5px) scale(1.01);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.3), 0 0 20px rgba(56, 189, 248, 0.3), inset 0 1px 1px rgba(255,255,255,0.05);
+        }
+
+        .glossy-jira-card .shimmer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(to right, transparent 0%, rgba(255, 255, 255, 0.08) 50%, transparent 100%);
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+        }
+        
+        .glossy-jira-card:hover .shimmer {
+            opacity: 1;
+            animation: subtle-shimmer 2.5s infinite linear;
+        }
+
+        .glossy-jira-card .button-shine {
+            background-image: linear-gradient(to right, #0ea5e9 0%, #22d3ee 51%, #0ea5e9 100%); /* sky-500 to cyan-400 */
+            background-size: 200% auto;
+            transition: background-position 0.5s, transform 0.2s;
+        }
+
+        .glossy-jira-card .button-shine:hover {
+            background-position: right center;
+            transform: scale(1.05);
+        }
+
+        /* --- RESPONSIVE DESIGN FOR MOBILE/TABLET --- */
+        
+        /* Mobile-first approach - Small screens (up to 640px) */
+        @media (max-width: 640px) {
+            /* Header adjustments */
+            .container {
+                padding: 1rem !important;
+            }
+            
+            /* Reduce header text size on mobile */
+            header h1 {
+                font-size: 2.5rem !important; /* Instead of text-4xl/5xl */
+                line-height: 1.2 !important;
+                min-height: 48px !important;
+            }
+            
+            header p {
+                font-size: 1rem !important;
+                margin-top: 0.5rem !important;
+            }
+            
+            /* Task cards - stack elements vertically */
+            .task-item .task-card {
+                padding: 1rem !important;
+            }
+            
+            /* Task header - force vertical stacking */
+            .task-item .task-card .flex.flex-col.xl\\:flex-row {
+                gap: 1rem !important;
+            }
+            
+            /* Controls container */
+            .task-item .flex.items-center.space-x-2 {
+                flex-wrap: wrap !important;
+                gap: 0.5rem !important;
+                justify-content: center !important;
+                margin: 0 !important;
+            }
+            
+            /* Make buttons larger for touch */
+            .control-btn {
+                width: 2.5rem !important;
+                height: 2.5rem !important;
+                min-width: 2.5rem !important;
+            }
+            
+            /* Input group adjustments */
+            .input-group {
+                padding: 0.25rem 0.5rem !important;
+                min-width: 200px !important;
+            }
+            
+            .input-group input {
+                width: 3rem !important;
+                height: 2rem !important;
+                font-size: 0.875rem !important;
+            }
+            
+            /* Progress displays - stack on mobile */
+            .grid.grid-cols-1.md\\:grid-cols-2 {
+                grid-template-columns: 1fr !important;
+            }
+            
+            /* Progress stats - smaller text */
+            .progress-stats {
+                font-size: 0.75rem !important;
+                gap: 0.5rem !important;
+            }
+            
+            .stat-item .value {
+                font-size: 0.875rem !important;
+            }
+            
+            /* Add task form - stack vertically */
+            .add-task-form-container form {
+                flex-direction: column !important;
+                gap: 0.75rem !important;
+            }
+            
+            .add-task-form-container input {
+                width: 100% !important;
+            }
+            
+            /* Date picker container */
+            .date-pickers {
+                flex-direction: column !important;
+                gap: 1.5rem !important;
+                align-items: center !important;
+            }
+            
+            .date-picker-group {
+                width: 100% !important;
+                max-width: 250px !important;
+            }
+            
+            .date-picker-group input {
+                width: 100% !important;
+            }
+            
+            /* Circular progress */
+            .circular-progress {
+                height: 100px !important;
+                width: 100px !important;
+            }
+            
+            .circular-progress::before {
+                height: 80px !important;
+                width: 80px !important;
+            }
+            
+            .day-number {
+                font-size: 2rem !important;
+            }
+            
+            /* Countdown timer */
+            #countdown-timer {
+                gap: 1rem !important;
+                flex-wrap: wrap !important;
+                justify-content: center !important;
+            }
+            
+            .countdown-number {
+                font-size: 1.875rem !important;
+            }
+            
+            /* Footer card adjustments */
+            .glossy-jira-card {
+                padding: 1rem !important;
+                flex-direction: column !important;
+                text-align: center !important;
+                gap: 1rem !important;
+            }
+            
+            .glossy-jira-card .flex.items-center {
+                flex-direction: column !important;
+                gap: 1rem !important;
+                text-align: center !important;
+            }
+            
+            /* Sync buttons */
+            #sync-container {
+                flex-direction: column !important;
+                gap: 0.75rem !important;
+            }
+            
+            #sync-container button {
+                width: 100% !important;
+                max-width: 200px !important;
+            }
+            
+            /* Reduce hover effects on mobile for performance */
+            .task-item:hover .task-card {
+                transform: scale(1.02) !important;
+            }
+            
+            /* Disable Netflix-style hover on mobile */
+            @media (hover: none) and (pointer: coarse) {
+                .task-item:hover .task-card {
+                    transform: none !important;
+                    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1) !important;
+                }
+                
+                #hover-backdrop {
+                    display: none !important;
+                }
+            }
+        }
+        
+        /* Disable Netflix hover on ALL touch devices (more reliable) */
+        @media (hover: none) and (pointer: coarse) {
+            .task-item:hover .task-card {
+                transform: none !important;
+                box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1) !important;
+            }
+            
+            #hover-backdrop {
+                display: none !important;
+            }
+            
+            .task-item .task-card {
+                transition: none !important;
+            }
+        }
+
+        /* Tablet adjustments (641px to 1280px) */
+        @media (min-width: 641px) and (max-width: 1280px) {
+            .container {
+                padding: 1.5rem !important;
+            }
+            
+            /* Slightly smaller header on tablets */
+            header h1 {
+                font-size: 3rem !important;
+            }
+            
+            /* Task cards - more moderate padding */
+            .task-item .task-card {
+                padding: 1.25rem !important;
+            }
+            
+            /* Controls - allow wrapping if needed */
+            .task-item .flex.items-center.space-x-2 {
+                flex-wrap: wrap !important;
+                gap: 0.75rem !important;
+            }
+            
+            /* Slightly larger touch targets */
+            .control-btn {
+                width: 2.25rem !important;
+                height: 2.25rem !important;
+            }
+            
+            /* Date picker adjustments */
+            .date-pickers {
+                gap: 1.25rem !important;
+            }
+            
+            /* Disable Netflix hover effects on tablets too */
+            .task-item:hover .task-card {
+                transform: none !important;
+                box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1) !important;
+            }
+            
+            /* Disable hover backdrop on tablets */
+            #hover-backdrop {
+                display: none !important;
+            }
+            
+            /* Disable hover transitions on tablets */
+            .task-item .task-card {
+                transition: none !important;
+            }
+            
+            /* Footer card - keep horizontal layout but adjust spacing */
+            .glossy-jira-card {
+                padding: 1.25rem !important;
+                gap: 1rem !important;
+            }
+        }
+        
+        /* Large mobile landscape (up to 768px wide, landscape orientation) */
+        @media (max-width: 768px) and (orientation: landscape) {
+            header h1 {
+                font-size: 2.25rem !important;
+                margin-bottom: 0.5rem !important;
+            }
+            
+            header p {
+                font-size: 0.875rem !important;
+                margin-top: 0.25rem !important;
+            }
+            
+            .target-date-container {
+                padding: 1rem !important;
+            }
+            
+            .date-pickers {
+                flex-direction: row !important;
+                justify-content: space-around !important;
+            }
+            
+            .circular-progress {
+                height: 80px !important;
+                width: 80px !important;
+            }
+            
+            .circular-progress::before {
+                height: 65px !important;
+                width: 65px !important;
+            }
+        }
+    </style>
+</head>
+
+
+
+<body class="text-gray-200 antialiased">
+
+<div id="hover-backdrop"></div>
+
+<div class="container mx-auto max-w-4xl p-4 sm:p-6 md:p-8">
+    <!-- PWA Install Banner -->
+    <div id="pwa-install-banner" class="fixed top-0 left-0 right-0 bg-gradient-to-r from-emerald-600 to-cyan-600 text-white p-3 transform -translate-y-full transition-transform duration-300 z-50 shadow-lg" style="display: none;">
+        <div class="flex items-center justify-between max-w-4xl mx-auto">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                    📚
+                </div>
+                <div>
+                    <div class="font-semibold">Install Anki Dashboard</div>
+                    <div class="text-sm opacity-90">Get the full app experience</div>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button id="pwa-install-btn" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg font-semibold transition-colors">
+                    Install
+                </button>
+                <button id="pwa-dismiss-btn" class="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg transition-colors">
+                    ×
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <header class="text-center mb-8">
+        <h1 class="text-4xl sm:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400 pb-2 min-h-[56px] sm:min-h-[72px]"></h1>
+        <p class="text-gray-400 mt-2 text-lg min-h-[28px]"></p>
+    </header>
+    
+    <main id="main-content" class="space-y-3">
+        <div class="loader"></div>
+        <p class="text-center text-gray-400">Loading your tracker...</p>
+    </main>
+
+    <footer class="text-center mt-6 text-gray-500 text-sm">
+        
+        <div class="glossy-jira-card rounded-xl p-5 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+            <div class="shimmer"></div>
+            <div class="flex items-center gap-4">
+                <div class="flex-shrink-0 bg-gray-900/50 p-3 rounded-full border border-gray-600">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                     </svg>
+                </div>
+                <div class="text-left">
+                    <h3 class="font-bold text-lg text-gray-100">Overall Project Plan</h3>
+                    <p class="text-sm text-gray-400">View the project timeline and epic tracking on Jira.</p>
+                </div>
+            </div>
+            <a href="https://aashish-kumar.atlassian.net/jira/software/projects/OBS/boards/1/timeline" target="_blank" rel="noopener noreferrer" class="flex-shrink-0 w-full sm:w-auto flex items-center justify-center gap-2 button-shine text-white font-semibold py-2 px-5 rounded-lg shadow-lg whitespace-nowrap">
+                View Timeline
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                    <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                </svg>
+            </a>
+        </div>
+        
+        <div id="sync-container" class="mt-4 flex justify-center items-center gap-4" style="display: none;">
+            <button id="pull-button" class="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 9.293a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+                Pull from Cloud
+            </button>
+            <button id="push-button" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                </svg>
+                Push to Cloud
+            </button>
+        </div>
+        <div id="sync-status" class="mt-2 text-xs text-gray-600 h-4"></div>
+        
+    </footer>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const JSONBIN_API_KEY = "$2a$10$hbH6IPJ.X8Dmvjp.hgDXBOIxQ2iQ3WFkkTOub97qtWD6MYB2uqIV6";
+        const JSONBIN_BIN_ID = "68c28d42ae596e708feac8f0";
+        const FETCH_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`;
+        const UPSERT_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
+
+        let syncStatusElement;
+        let tasks = [];
+        let progressState = {};
+        let dailyProgressState = {};
+        let dailyGoals = {};
+        let startDate = new Date();
+        let targetDate = new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
+        let countdownInterval = null;
+
+        const mainContentContainer = document.getElementById('main-content');
+        const titleElement = document.querySelector('header h1');
+        const subtitleElement = document.querySelector('header p');
+        // REMOVED: footerElement constant
+
+        async function initialLoad() {
+            const isLocalStorageEmpty = !localStorage.getItem('studyTasks');
+            if (isLocalStorageEmpty) {
+                updateSyncStatus('First time setup. Pulling from cloud...', '#a78bfa');
+                const success = await handlePullFromCloud(false);
+                if (!success) loadStateFromLocal();
+            } else {
+                loadStateFromLocal();
+            }
+            initializeAppUI();
+        }
+
+        async function handlePullFromCloud(withConfirmation = true) {
+            if (withConfirmation && !confirm("Are you sure? This will overwrite your current local data.")) return false;
+            
+            const pullButton = document.getElementById('pull-button');
+            if (pullButton) {
+                pullButton.disabled = true;
+                pullButton.innerHTML = 'Pulling...';
+            }
+
+            try {
+                updateSyncStatus('Pulling from cloud...', '#6b7280');
+                const response = await fetch(FETCH_URL, { headers: { 'X-Master-Key': JSONBIN_API_KEY } });
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                
+                const data = await response.json();
+                const record = data.record || data;
+                if (Object.keys(record).length === 0) throw new Error("Bin is empty.");
+
+                localStorage.setItem('studyStartDate', record.studyStartDate || new Date().toISOString());
+                localStorage.setItem('studyTargetDate', record.studyTargetDate || new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000).toISOString());
+                localStorage.setItem('studyTasks', JSON.stringify(record.studyTasks || []));
+                localStorage.setItem('studyProgressState', JSON.stringify(record.studyProgressState || {}));
+                localStorage.setItem('studyDailyProgressState', JSON.stringify(record.studyDailyProgressState || {}));
+                localStorage.setItem('studyTrackerTitle', record.studyTrackerTitle || 'Study Progress Tracker');
+                localStorage.setItem('studyTrackerSubtitle', record.studyTrackerSubtitle || 'Your customizable study plan.');
+                // REMOVED: studyTrackerFooter from local storage saving
+                
+                loadStateFromLocal();
+                updateSyncStatus('Pull successful ✓', '#10b981');
+
+                if (withConfirmation) {
+                    mainContentContainer.style.transition = 'opacity 0.3s ease-out';
+                    mainContentContainer.style.opacity = '0';
+                    setTimeout(() => {
+                        if (countdownInterval) clearInterval(countdownInterval);
+                        initializeAppUI();
+                        mainContentContainer.style.opacity = '1';
+                    }, 300);
+                }
+                return true;
+            } catch (error) {
+                console.error("Failed to pull from cloud:", error);
+                updateSyncStatus(`Pull Error: ${error.message}`, '#ef4444');
+                return false;
+            } finally {
+                if (pullButton) {
+                    pullButton.disabled = false;
+                    pullButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 9.293a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg> Pull from Cloud`;
+                }
+            }
+        }
+
+        async function handlePushToCloud() {
+            const dataToSync = {
+                studyStartDate: localStorage.getItem('studyStartDate'),
+                studyTargetDate: localStorage.getItem('studyTargetDate'),
+                studyTasks: JSON.parse(localStorage.getItem('studyTasks') || '[]'),
+                studyProgressState: JSON.parse(localStorage.getItem('studyProgressState') || '{}'),
+                studyDailyProgressState: JSON.parse(localStorage.getItem('studyDailyProgressState') || '{}'),
+                studyTrackerTitle: localStorage.getItem('studyTrackerTitle'),
+                studyTrackerSubtitle: localStorage.getItem('studyTrackerSubtitle')
+                // REMOVED: studyTrackerFooter from data push
+            };
+
+            const pushButton = document.getElementById('push-button');
+            pushButton.disabled = true;
+            pushButton.innerHTML = 'Pushing...';
+
+            try {
+                updateSyncStatus('Pushing to cloud...', '#6b7280');
+                const response = await fetch(UPSERT_URL, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': JSONBIN_API_KEY
+                    },
+                    body: JSON.stringify(dataToSync)
+                });
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                await response.json();
+                updateSyncStatus('Push successful ✓', '#10b981');
+            } catch (error) {
+                console.error("Failed to push to cloud:", error);
+                updateSyncStatus(`Push Error: ${error.message}`, '#ef4444');
+            } finally {
+                 pushButton.disabled = false;
+                 pushButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg> Push to Cloud`;
+            }
+        }
+
+        function updateSyncStatus(message, color) {
+            if (!syncStatusElement) syncStatusElement = document.getElementById('sync-status');
+            if (syncStatusElement) {
+                syncStatusElement.textContent = message;
+                syncStatusElement.style.color = color;
+                setTimeout(() => {
+                    if (syncStatusElement.textContent === message) syncStatusElement.textContent = '';
+                }, 5000);
+            }
+        }
+
+        function saveStateToLocal() {
+            localStorage.setItem('studyStartDate', startDate.toISOString());
+            localStorage.setItem('studyTargetDate', targetDate.toISOString());
+            localStorage.setItem('studyTasks', JSON.stringify(tasks));
+            localStorage.setItem('studyProgressState', JSON.stringify(progressState));
+            localStorage.setItem('studyDailyProgressState', JSON.stringify(dailyProgressState));
+        }
+
+        function saveTextStateToLocal() {
+            localStorage.setItem('studyTrackerTitle', titleElement.textContent);
+            localStorage.setItem('studyTrackerSubtitle', subtitleElement.textContent);
+            // REMOVED: footerElement saving
+        }
+
+        function loadStateFromLocal() {
+            const savedStartDate = localStorage.getItem('studyStartDate');
+            startDate = savedStartDate ? new Date(savedStartDate) : new Date();
+
+            const savedTargetDate = localStorage.getItem('studyTargetDate');
+            targetDate = savedTargetDate ? new Date(savedTargetDate) : new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
+            
+            tasks = JSON.parse(localStorage.getItem('studyTasks') || '[]');
+            progressState = JSON.parse(localStorage.getItem('studyProgressState') || '{}');
+            
+            const lastVisitDay = Math.floor((new Date().getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+            const savedLastVisitDay = localStorage.getItem('studyLastVisitDay');
+
+            if (savedLastVisitDay && parseInt(savedLastVisitDay, 10) === lastVisitDay) {
+                dailyProgressState = JSON.parse(localStorage.getItem('studyDailyProgressState') || '{}');
+            } else {
+                localStorage.setItem('studyDailyProgressState', JSON.stringify({}));
+                localStorage.setItem('studyLastVisitDay', lastVisitDay);
+                dailyProgressState = {};
+            }
+            syncAndValidateState();
+        }
+        
+        function getSavedTexts() {
+            const savedTitle = localStorage.getItem('studyTrackerTitle') || 'Study Progress Tracker';
+            const savedSubtitle = localStorage.getItem('studyTrackerSubtitle') || 'Your customizable study plan.';
+            // REMOVED: savedFooter retrieval
+            return { title: savedTitle, subtitle: savedSubtitle };
+        }
+
+        function syncAndValidateState() {
+            const taskIds = new Set(tasks.map(t => t.id));
+            Object.keys(progressState).forEach(id => { if (!taskIds.has(id)) delete progressState[id]; });
+            Object.keys(dailyProgressState).forEach(id => { if (!taskIds.has(id)) delete dailyProgressState[id]; });
+            tasks.forEach(task => {
+                if (progressState[task.id] === undefined) progressState[task.id] = 0;
+                if (dailyProgressState[task.id] === undefined) dailyProgressState[task.id] = 0;
+            });
+        }
+        
+        function calculateAllDailyGoals() {
+            const totalDurationMillis = targetDate.getTime() - startDate.getTime();
+            if (totalDurationMillis <= 0) return;
+
+            const durationInDays = Math.ceil(totalDurationMillis / (1000 * 60 * 60 * 24));
+            
+            tasks.forEach(task => {
+                dailyGoals[task.id] = Math.ceil(Number(task.totalGoal) / durationInDays);
+            });
+        }
+
+        function render() {
+            mainContentContainer.innerHTML = ''; 
+
+            const tasksContainer = document.createElement('div');
+            tasksContainer.id = 'tasks-container';
+            tasksContainer.className = 'space-y-4';
+            
+            if (tasks.length === 0) {
+                 tasksContainer.innerHTML = `<div class="text-center text-gray-500 py-10">No tasks yet. Add one below to get started!</div>`;
+            } else {
+                tasks.forEach((task, taskIndex) => {
+                    const taskItem = document.createElement('div');
+                    taskItem.className = 'task-item'; // wrapper gets the animation
+                    taskItem.style.animationDelay = `${taskIndex * 50}ms`;
+
+                    // move your visual styles onto the inner ".task-card"
+                    taskItem.innerHTML = `
+                        <div class="task-card bg-gray-800 rounded-lg shadow-md p-4 flex flex-col gap-4">
+                            <div class="flex flex-col xl:flex-row items-start justify-between gap-4">
+                                <span class="font-semibold text-xl text-gray-200">${task.name}</span>
+                                <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0 self-end xl:self-center">
+                                    <button class="control-btn remove-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-rose-600 transition-colors flex items-center justify-center" data-task="${task.id}" title="Remove Task"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                                    <button class="control-btn minus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-red-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="-1" title="Increase remaining count">-</button>
+
+                                    <div class="input-group">
+                                        <span class="text-gray-400 text-sm whitespace-nowrap pl-2">Remaining:</span>
+                                        <input type="number" class="task-input-remaining" value="0" min="0" data-task="${task.id}">
+                                        <span class="separator">/</span>
+                                        <input type="number" class="task-input-total" value="${task.totalGoal}" min="0" data-task="${task.id}">
+                                    </div>
+
+                                    <button class="control-btn plus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-green-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="1" title="Decrease remaining count">+</button>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="progress-display">
+                                    <h4 class="font-semibold text-gray-300">Daily Progress</h4>
+                                    <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-daily-${task.id}" class="progress-bar-fill progress-bar-daily" style="width: 0%"></div></div>
+                                    <div class="progress-stats">
+                                        <div class="stat-item text-center"><div class="label">Completed</div><div id="daily-completed-${task.id}" class="value completed">0</div></div>
+                                        <div class="stat-item text-center"><div class="label">Remaining</div><div id="daily-remaining-${task.id}" class="value">0</div></div>
+                                        <div class="stat-item text-center"><div class="label">Total</div><div id="daily-total-${task.id}" class="value">0</div></div>
+                                    </div>
+                                </div>
+                                <div class="progress-display">
+                                    <h4 class="font-semibold text-gray-300">Overall Progress</h4>
+                                    <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-overall-${task.id}" class="progress-bar-fill progress-bar-overall" style="width: 0%"></div></div>
+                                    <div class="progress-stats">
+                                        <div class="stat-item text-center"><div class="label">Completed</div><div id="overall-completed-${task.id}" class="value completed">0</div></div>
+                                        <div class="stat-item text-center"><div class="label">Remaining</div><div id="overall-remaining-${task.id}" class="value">0</div></div>
+                                        <div class="stat-item text-center"><div class="label">Total</div><div id="overall-total-${task.id}" class="value">${task.totalGoal}</div></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    tasksContainer.appendChild(taskItem);
+                });
+            }
+            mainContentContainer.appendChild(tasksContainer);
+            mainContentContainer.insertAdjacentHTML('beforeend', `
+                <div class="add-task-form-container bg-gray-800/50 rounded-lg p-4 mt-6">
+                    <h3 class="text-lg font-semibold text-gray-300 mb-3">Add New Task</h3>
+                    <form id="add-task-form" class="flex flex-col sm:flex-row gap-3">
+                        <input type="text" id="new-task-name" placeholder="Task Name" class="flex-grow bg-gray-900 border border-gray-600 rounded-md h-10 px-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" required>
+                        <input type="number" id="new-task-goal" placeholder="Total Goal" class="w-full sm:w-32 bg-gray-900 border border-gray-600 rounded-md h-10 px-3 text-center focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" min="1" required>
+                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 rounded-md h-10 px-5 font-semibold transition-colors flex items-center justify-center">Add Task</button>
+                    </form>
+                </div>`);
+            mainContentContainer.insertAdjacentHTML('beforeend', `
+                <div class="target-date-container">
+                    <div class="date-pickers">
+                        <div class="date-picker-group">
+                            <label for="start-date-input">Start Date</label>
+                            <input type="datetime-local" id="start-date-input">
+                        </div>
+                        <div id="current-day-container">
+                            <div class="circular-progress">
+                                <div class="day-number-container">
+                                    <div class="day-label">Day</div>
+                                    <div class="day-number" id="current-day-number">1</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="date-picker-group">
+                            <label for="target-date-input">Target Deadline</label>
+                            <input type="datetime-local" id="target-date-input">
+                        </div>
+                    </div>
+                    <div id="countdown-timer"></div>
+                </div>`);
+            updateUI();
+        }
+
+        function getDaysRemaining() {
+            const difference = targetDate.getTime() - new Date().getTime();
+            if (difference <= 0) return 0.001;
+            return difference / (1000 * 60 * 60 * 24);
+        }
+
+        function updateCountdown() {
+            const timerElement = document.getElementById('countdown-timer');
+            if (!timerElement) return;
+
+            const difference = targetDate.getTime() - new Date().getTime();
+
+            if (difference <= 0) {
+                timerElement.innerHTML = `<span class="text-2xl font-bold text-rose-500">Deadline Reached!</span>`;
+                return;
+            }
+
+            const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+            timerElement.innerHTML = `
+                <div class="countdown-segment"><span class="countdown-number">${days}</span><span class="countdown-label">Days</span></div>
+                <div class="countdown-segment"><span class="countdown-number">${hours}</span><span class="countdown-label">Hours</span></div>
+                <div class="countdown-segment"><span class="countdown-number">${minutes}</span><span class="countdown-label">Minutes</span></div>
+                <div class="countdown-segment"><span class="countdown-number">${seconds}</span><span class="countdown-label">Seconds</span></div>
+            `;
+        }
+
+        function updateUI() {
+            updateCountdown();
+
+            // Update current day display
+            const now = new Date();
+            const timeSinceStart = now.getTime() - startDate.getTime();
+            if (timeSinceStart >= 0) {
+                const dayMillis = 1000 * 60 * 60 * 24;
+                const currentDayNumber = Math.floor(timeSinceStart / dayMillis) + 1;
+                const progressOfDay = (timeSinceStart % dayMillis) / dayMillis;
+                const angle = progressOfDay * 360;
+
+                const circularProgress = document.querySelector('.circular-progress');
+                const dayNumberEl = document.getElementById('current-day-number');
+
+                if (circularProgress) {
+                    circularProgress.style.background = `conic-gradient(#818cf8 ${angle}deg, #374151 ${angle}deg)`;
+                }
+                if (dayNumberEl) {
+                    dayNumberEl.textContent = currentDayNumber;
+                }
+            }
+
+
+            tasks.forEach(task => {
+                const totalGoal = Number(task.totalGoal);
+                const totalCompleted = Number(progressState[task.id] || 0);
+                const todaysCompleted = Number(dailyProgressState[task.id] || 0);
+                const overallRemaining = totalGoal - totalCompleted;
+                const dailyGoal = dailyGoals[task.id] || 0;
+                const dailyRemaining = Math.max(0, dailyGoal - todaysCompleted);
+
+                const overallPercent = totalGoal > 0 ? (totalCompleted / totalGoal) * 100 : 0;
+                const dailyPercent = dailyGoal > 0 ? (todaysCompleted / dailyGoal) * 100 : 0;
+                
+                document.querySelector(`.task-input-remaining[data-task="${task.id}"]`).value = overallRemaining;
+                document.querySelector(`.task-input-total[data-task="${task.id}"]`).value = totalGoal;
+                
+                // Update progress bars
+                document.getElementById(`task-progress-bar-daily-${task.id}`).style.width = `${Math.min(100, dailyPercent)}%`;
+                document.getElementById(`task-progress-bar-overall-${task.id}`).style.width = `${Math.min(100, overallPercent)}%`;
+
+                // Update stats
+                document.getElementById(`daily-completed-${task.id}`).textContent = todaysCompleted;
+                document.getElementById(`daily-remaining-${task.id}`).textContent = dailyRemaining;
+                document.getElementById(`daily-total-${task.id}`).textContent = dailyGoal;
+
+                document.getElementById(`overall-completed-${task.id}`).textContent = totalCompleted;
+                document.getElementById(`overall-remaining-${task.id}`).textContent = overallRemaining;
+                document.getElementById(`overall-total-${task.id}`).textContent = totalGoal;
+            });
+        }
+        
+        function attachEventListeners() {
+            // Event delegation for date inputs, task value inputs, and control buttons
+            mainContentContainer.addEventListener('input', e => {
+                if (e.target.id === 'start-date-input' || e.target.id === 'target-date-input') {
+                    if (e.target.id === 'start-date-input') {
+                         const newDate = new Date(e.target.value);
+                         if (!isNaN(newDate.getTime())) startDate = newDate;
+                    } else {
+                         const newDate = new Date(e.target.value);
+                         if (!isNaN(newDate.getTime())) targetDate = newDate;
+                    }
+                    calculateAllDailyGoals();
+                    saveStateToLocal();
+                    updateUI();
+                    return;
+                }
+
+                const taskId = e.target.dataset.task;
+                if (taskId) {
+                    const task = tasks.find(t => t.id === taskId);
+                    if (!task) return;
+                    
+                    const oldCompleted = progressState[task.id] || 0;
+
+                    if (e.target.classList.contains('task-input-remaining')) {
+                        const remainingValue = parseInt(e.target.value, 10);
+                         if (!isNaN(remainingValue)) {
+                            const newCompleted = Math.max(0, Math.min(Number(task.totalGoal) - remainingValue, Number(task.totalGoal)));
+                            const delta = newCompleted - oldCompleted;
+                            progressState[taskId] = newCompleted;
+                            dailyProgressState[taskId] = (dailyProgressState[taskId] || 0) + delta;
+                        }
+                    } else if (e.target.classList.contains('task-input-total')) {
+                        const newTotal = parseInt(e.target.value, 10);
+                        if (!isNaN(newTotal) && newTotal >= 0) {
+                            task.totalGoal = newTotal;
+                            if (newTotal < progressState[taskId]) {
+                                progressState[taskId] = newTotal;
+                            }
+                            calculateAllDailyGoals();
+                        }
+                    }
+                    saveStateToLocal();
+                    updateUI();
+                }
+            });
+
+            mainContentContainer.addEventListener('click', e => {
+                const controlBtn = e.target.closest('.control-btn');
+                if (!controlBtn) return;
+                const { task: taskId, change } = controlBtn.dataset;
+                const task = tasks.find(t => t.id === taskId);
+                if (!task) return;
+
+                if (change) {
+                    const changeAmount = parseInt(change, 10);
+                    const totalGoal = Number(task.totalGoal);
+                    const currentCompleted = progressState[taskId] || 0;
+                    const newCompleted = currentCompleted + changeAmount;
+                    
+                    if (newCompleted >= 0 && newCompleted <= totalGoal) {
+                        progressState[taskId] = newCompleted;
+                        dailyProgressState[taskId] = Math.max(0, (dailyProgressState[taskId] || 0) + changeAmount);
+                    }
+                } else if (controlBtn.classList.contains('remove-btn')) {
+                    tasks = tasks.filter(t => t.id !== taskId);
+                    delete progressState[taskId];
+                    delete dailyProgressState[taskId];
+                    delete dailyGoals[taskId];
+                    render(); 
+                }
+                saveStateToLocal();
+                updateUI();
+            });
+
+            mainContentContainer.addEventListener('submit', e => {
+                if (e.target.id === 'add-task-form') {
+                    e.preventDefault();
+                    const nameInput = document.getElementById('new-task-name');
+                    const goalInput = document.getElementById('new-task-goal');
+                    const name = nameInput.value.trim();
+                    const goal = parseInt(goalInput.value, 10);
+                    if (name && !isNaN(goal) && goal > 0) {
+                        const newTask = { id: `task-${Date.now()}`, name, totalGoal: goal };
+                        tasks.push(newTask);
+                        progressState[newTask.id] = 0;
+                        dailyProgressState[newTask.id] = 0;
+                        calculateAllDailyGoals();
+                        saveStateToLocal();
+                        render();
+                        nameInput.value = '';
+                        goalInput.value = '';
+                        nameInput.focus();
+                    }
+                }
+            });
+
+            // NEW: Event listeners for the hover backdrop effect
+            const backdrop = document.getElementById('hover-backdrop');
+            let currentlyHoveredTask = null;
+            
+            if (mainContentContainer && backdrop) {
+                mainContentContainer.addEventListener('mouseover', (e) => {
+                    const taskItem = e.target.closest('.task-item');
+                    if (taskItem) {
+                        backdrop.classList.add('visible');
+                        currentlyHoveredTask = taskItem;
+                    }
+                });
+
+                mainContentContainer.addEventListener('mouseout', (e) => {
+                    // Check if the element we are moving to is still within the same task item.
+                    // This prevents flickering when moving between child elements.
+                    const taskItem = e.target.closest('.task-item');
+                    if (taskItem && !taskItem.contains(e.relatedTarget)) {
+                        backdrop.classList.remove('visible');
+                        currentlyHoveredTask = null;
+                    }
+                });
+            }
+
+            // NEW: Keyboard shortcuts for hovered tasks
+            document.addEventListener('keydown', (e) => {
+                // Only work when a task is currently hovered/enlarged
+                if (!currentlyHoveredTask) return;
+                
+                // Prevent default behavior and stop propagation to avoid conflicts
+                if (e.key === '+' || e.key === '=' || e.key === '-' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                
+                let changeAmount = 0;
+                if (e.key === '+' || e.key === '=' || e.key === ' ') {
+                    // + key, = key (unshifted +), or spacebar increases count
+                    changeAmount = 1;
+                } else if (e.key === '-') {
+                    // - key decreases count
+                    changeAmount = -1;
+                } else {
+                    return; // Not a key we care about
+                }
+                
+                // Find the task data from the hovered task item
+                const plusBtn = currentlyHoveredTask.querySelector('.plus-btn');
+                const minusBtn = currentlyHoveredTask.querySelector('.minus-btn');
+                
+                if (!plusBtn || !minusBtn) return;
+                
+                const taskId = plusBtn.dataset.task || minusBtn.dataset.task;
+                const task = tasks.find(t => t.id === taskId);
+                if (!task) return;
+                
+                // Use the same logic as the control buttons
+                const totalGoal = Number(task.totalGoal);
+                const currentCompleted = progressState[taskId] || 0;
+                const newCompleted = currentCompleted + changeAmount;
+                
+                if (newCompleted >= 0 && newCompleted <= totalGoal) {
+                    progressState[taskId] = newCompleted;
+                    dailyProgressState[taskId] = Math.max(0, (dailyProgressState[taskId] || 0) + changeAmount);
+                    saveStateToLocal();
+                    updateUI();
+                }
+            });
+            
+            // Listeners for cloud sync buttons
+            document.getElementById('pull-button').addEventListener('click', () => handlePullFromCloud(true));
+            document.getElementById('push-button').addEventListener('click', handlePushToCloud);
+        }
+        
+        function typeWriter(element, text, callback) {
+            let i = 0;
+            const speed = 50;
+            element.innerHTML = '';
+            element.classList.add('typing-cursor');
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i++);
+                    setTimeout(type, 50);
+                } else {
+                    element.classList.remove('typing-cursor');
+                    element.setAttribute('contenteditable', 'true');
+                    if (callback) callback();
+                }
+            }
+            type();
+        }
+
+        function formatDateForInput(date) {
+            const yyyy = date.getFullYear();
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            const hh = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+        }
+
+        function initializeAppUI() {
+            mainContentContainer.innerHTML = ''; 
+            loadStateFromLocal();
+            calculateAllDailyGoals();
+            render();
+            attachEventListeners();
+            document.getElementById('sync-container').style.display = 'flex';
+            
+            document.getElementById('start-date-input').value = formatDateForInput(startDate);
+            document.getElementById('target-date-input').value = formatDateForInput(targetDate);
+
+            if (countdownInterval) clearInterval(countdownInterval);
+            countdownInterval = setInterval(updateUI, 1000);
+            const { title, subtitle } = getSavedTexts(); // REMOVED footer
+            if (!titleElement.hasAttribute('contenteditable')) {
+                typeWriter(titleElement, title, () => {
+                    typeWriter(subtitleElement, subtitle, () => {
+                        // REMOVED: window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                         // REMOVED footer typewriter
+                    });
+                });
+            } else {
+                titleElement.textContent = title;
+                subtitleElement.textContent = subtitle;
+                // REMOVED footer text setting
+            }
+        }
+
+        titleElement.addEventListener('blur', saveTextStateToLocal);
+        subtitleElement.addEventListener('blur', saveTextStateToLocal);
+        // REMOVED: footerElement event listener
+
+        initialLoad();
+
+        // --- PWA Service Worker Registration ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((registration) => {
+                        console.log('[PWA] Service Worker registered successfully:', registration.scope);
+                        
+                        // Check for updates
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New content is available
+                                    showUpdateAvailable();
+                                }
+                            });
+                        });
+                    })
+                    .catch((error) => {
+                        console.log('[PWA] Service Worker registration failed:', error);
+                    });
+            });
+        }
+
+        // --- PWA Install Prompt Handling ---
+        let deferredPrompt;
+        const installBanner = document.getElementById('pwa-install-banner');
+        const installBtn = document.getElementById('pwa-install-btn');
+        const dismissBtn = document.getElementById('pwa-dismiss-btn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('[PWA] Install prompt triggered');
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Check if user has previously dismissed the install prompt
+            const dismissedTime = localStorage.getItem('pwa-install-dismissed');
+            const now = Date.now();
+            const oneWeek = 7 * 24 * 60 * 60 * 1000;
+            
+            if (!dismissedTime || (now - parseInt(dismissedTime)) > oneWeek) {
+                showInstallBanner();
+            }
+        });
+
+        function showInstallBanner() {
+            if (installBanner) {
+                installBanner.style.display = 'block';
+                setTimeout(() => {
+                    installBanner.style.transform = 'translateY(0)';
+                }, 100);
+            }
+        }
+
+        function hideInstallBanner() {
+            if (installBanner) {
+                installBanner.style.transform = 'translateY(-100%)';
+                setTimeout(() => {
+                    installBanner.style.display = 'none';
+                }, 300);
+            }
+        }
+
+        if (installBtn) {
+            installBtn.addEventListener('click', async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    console.log('[PWA] Install prompt outcome:', outcome);
+                    
+                    if (outcome === 'accepted') {
+                        console.log('[PWA] User accepted the install prompt');
+                    } else {
+                        console.log('[PWA] User dismissed the install prompt');
+                        localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+                    }
+                    
+                    deferredPrompt = null;
+                    hideInstallBanner();
+                }
+            });
+        }
+
+        if (dismissBtn) {
+            dismissBtn.addEventListener('click', () => {
+                localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+                hideInstallBanner();
+            });
+        }
+
+        // Listen for app installation
+        window.addEventListener('appinstalled', () => {
+            console.log('[PWA] App was installed');
+            hideInstallBanner();
+            updateSyncStatus('App installed successfully! 🎉', '#10b981');
+        });
+
+        // Show update notification
+        function showUpdateAvailable() {
+            const updateNotification = document.createElement('div');
+            updateNotification.className = 'fixed bottom-4 right-4 bg-blue-600 text-white p-4 rounded-lg shadow-lg z-50';
+            updateNotification.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div>🔄</div>
+                    <div>
+                        <div class="font-semibold">Update Available</div>
+                        <div class="text-sm opacity-90">A new version is ready</div>
+                    </div>
+                    <button onclick="window.location.reload()" class="bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-sm">
+                        Update
+                    </button>
+                    <button onclick="this.parentElement.parentElement.remove()" class="bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-sm">
+                        ×
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(updateNotification);
+            
+            setTimeout(() => {
+                if (updateNotification.parentElement) {
+                    updateNotification.remove();
+                }
+            }, 10000);
+        }
+
+        // --- NEW: Intersection Observer for beautiful scroll animation ---
+        const jiraCard = document.querySelector('.glossy-jira-card');
+        if (jiraCard) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('is-visible');
+                        observer.unobserve(entry.target); // Stop observing once it's visible
+                    }
+                });
+            }, {
+                threshold: 0.2 // Trigger when 20% of the element is visible
+            });
+            observer.observe(jiraCard);
+        }
+    });
+</script>
+</body>
+</html>

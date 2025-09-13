@@ -752,13 +752,19 @@
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 9.293a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
                 </svg>
-                Pull from Cloud
+                Manual Pull
             </button>
+            <div class="flex items-center gap-2 bg-green-800/20 border border-green-600/30 text-green-400 font-semibold py-2 px-4 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Auto-Sync Enabled
+            </div>
             <button id="push-button" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
                 </svg>
-                Push to Cloud
+                Manual Push
             </button>
         </div>
         
@@ -792,6 +798,9 @@
         let startDate = new Date();
         let targetDate = new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
         let countdownInterval = null;
+        let autoSyncTimeout = null;
+        let isAutoSyncing = false;
+        let isInitialLoad = true; // Flag to prevent auto-sync during initial load
 
         const mainContentContainer = document.getElementById('main-content');
         const titleElement = document.querySelector('header h1');
@@ -799,12 +808,10 @@
         // REMOVED: footerElement constant
 
         async function initialLoad() {
-            const isLocalStorageEmpty = !localStorage.getItem('studyTasks');
-            if (isLocalStorageEmpty) {
-                updateSyncStatus('First time setup. Pulling from cloud...', '#a78bfa');
-                const success = await handlePullFromCloud(false);
-                if (!success) loadStateFromLocal();
-            } else {
+            updateSyncStatus('Syncing from cloud...', '#a78bfa');
+            const success = await handlePullFromCloud(false);
+            if (!success) {
+                updateSyncStatus('Cloud sync failed, loading local data...', '#f59e0b');
                 loadStateFromLocal();
             }
             initializeAppUI();
@@ -898,25 +905,14 @@
                     dailyProgressState[task.id] = 0;
                 });
                 
-                // Save the reset state to localStorage
+                // Save the reset state to localStorage (this will auto-trigger sync)
                 saveStateToLocal();
                 
                 // Update the UI to reflect the reset
                 updateUI();
                 
                 // Show success message
-                updateSyncStatus('✅ All progress has been reset successfully!', '#10b981');
-                
-                // Optional: Auto-push to cloud if user wants to sync the reset
-                const shouldPushToCloud = confirm(
-                    "Progress reset complete!\n\n" +
-                    "Would you like to sync this reset to the cloud?\n" +
-                    "(This will overwrite any cloud backup with the reset data)"
-                );
-                
-                if (shouldPushToCloud) {
-                    await handlePushToCloud();
-                }
+                updateSyncStatus('✅ All progress has been reset and synced!', '#10b981');
                 
             } catch (error) {
                 console.error('Error resetting progress:', error);
@@ -973,18 +969,72 @@
             }
         }
 
+        // Debounced auto-sync function to prevent excessive API calls
+        async function debouncedAutoSync() {
+            if (isAutoSyncing || isInitialLoad) return; // Prevent concurrent auto-syncs and during initial load
+            
+            if (autoSyncTimeout) {
+                clearTimeout(autoSyncTimeout);
+            }
+            
+            autoSyncTimeout = setTimeout(async () => {
+                try {
+                    isAutoSyncing = true;
+                    updateSyncStatus('Auto-syncing...', '#6b7280');
+                    
+                    const dataToSync = {
+                        studyStartDate: localStorage.getItem('studyStartDate'),
+                        studyTargetDate: localStorage.getItem('studyTargetDate'),
+                        studyTasks: JSON.parse(localStorage.getItem('studyTasks') || '[]'),
+                        studyProgressState: JSON.parse(localStorage.getItem('studyProgressState') || '{}'),
+                        studyDailyProgressState: JSON.parse(localStorage.getItem('studyDailyProgressState') || '{}'),
+                        studyTrackerTitle: localStorage.getItem('studyTrackerTitle'),
+                        studyTrackerSubtitle: localStorage.getItem('studyTrackerSubtitle')
+                    };
+
+                    const response = await fetch(UPSERT_URL, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Master-Key': JSONBIN_API_KEY
+                        },
+                        body: JSON.stringify(dataToSync)
+                    });
+                    
+                    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                    
+                    updateSyncStatus('Auto-sync complete ✓', '#10b981');
+                } catch (error) {
+                    console.error('Auto-sync failed:', error);
+                    updateSyncStatus('Auto-sync failed', '#ef4444');
+                } finally {
+                    isAutoSyncing = false;
+                }
+            }, 2000); // 2 second debounce delay
+        }
+
         function saveStateToLocal() {
             localStorage.setItem('studyStartDate', startDate.toISOString());
             localStorage.setItem('studyTargetDate', targetDate.toISOString());
             localStorage.setItem('studyTasks', JSON.stringify(tasks));
             localStorage.setItem('studyProgressState', JSON.stringify(progressState));
             localStorage.setItem('studyDailyProgressState', JSON.stringify(dailyProgressState));
+            
+            // Trigger auto-sync after saving to local storage (only if not initial load)
+            if (!isInitialLoad) {
+                debouncedAutoSync();
+            }
         }
 
         function saveTextStateToLocal() {
             localStorage.setItem('studyTrackerTitle', titleElement.textContent);
             localStorage.setItem('studyTrackerSubtitle', subtitleElement.textContent);
             // REMOVED: footerElement saving
+            
+            // Trigger auto-sync after saving text changes (only if not initial load)
+            if (!isInitialLoad) {
+                debouncedAutoSync();
+            }
         }
 
         function loadStateFromLocal() {
@@ -1228,7 +1278,7 @@
                          if (!isNaN(newDate.getTime())) targetDate = newDate;
                     }
                     calculateAllDailyGoals();
-                    saveStateToLocal();
+                    saveStateToLocal(); // This will auto-trigger sync
                     updateUI();
                     return;
                 }
@@ -1258,7 +1308,7 @@
                             calculateAllDailyGoals();
                         }
                     }
-                    saveStateToLocal();
+                    saveStateToLocal(); // This will auto-trigger sync
                     updateUI();
                 }
             });
@@ -1287,7 +1337,7 @@
                     delete dailyGoals[taskId];
                     render(); 
                 }
-                saveStateToLocal();
+                saveStateToLocal(); // This will auto-trigger sync
                 updateUI();
             });
 
@@ -1304,7 +1354,7 @@
                         progressState[newTask.id] = 0;
                         dailyProgressState[newTask.id] = 0;
                         calculateAllDailyGoals();
-                        saveStateToLocal();
+                        saveStateToLocal(); // This will auto-trigger sync
                         render();
                         nameInput.value = '';
                         goalInput.value = '';
@@ -1377,7 +1427,7 @@
                 if (newCompleted >= 0 && newCompleted <= totalGoal) {
                     progressState[taskId] = newCompleted;
                     dailyProgressState[taskId] = Math.max(0, (dailyProgressState[taskId] || 0) + changeAmount);
-                    saveStateToLocal();
+                    saveStateToLocal(); // This will auto-trigger sync
                     updateUI();
                 }
             });
@@ -1425,6 +1475,9 @@
             attachEventListeners();
             document.getElementById('sync-container').style.display = 'flex';
             document.getElementById('reset-container').style.display = 'flex';
+            
+            // Enable auto-sync after initial load is complete
+            isInitialLoad = false;
             
             document.getElementById('start-date-input').value = formatDateForInput(startDate);
             document.getElementById('target-date-input').value = formatDateForInput(targetDate);

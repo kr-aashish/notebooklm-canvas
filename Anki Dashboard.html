@@ -1157,6 +1157,27 @@
                     <div id="day-tabs-container" class="border-b border-gray-700/50"></div>
                 </div>
                 <div id="tab-content-container"></div>
+                <div class="target-date-container">
+                    <div class="date-pickers">
+                        <div class="date-picker-group">
+                            <label for="start-date-input">Start Date</label>
+                            <input type="datetime-local" id="start-date-input">
+                        </div>
+                        <div id="current-day-container">
+                            <div class="circular-progress">
+                                <div class="day-number-container">
+                                    <div class="day-label">Day</div>
+                                    <div class="day-number" id="current-day-number">1</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="date-picker-group">
+                            <label for="target-date-input">Target Deadline</label>
+                            <input type="datetime-local" id="target-date-input">
+                        </div>
+                    </div>
+                    <div id="countdown-timer"></div>
+                </div>
             `;
             
             renderTabs();
@@ -1173,6 +1194,14 @@
             }
 
             renderDayContent(activeDay);
+            
+            // Set date values after the inputs are created
+            setTimeout(() => {
+                const startInput = document.getElementById('start-date-input');
+                const targetInput = document.getElementById('target-date-input');
+                if (startInput) startInput.value = formatDateForInput(startDate);
+                if (targetInput) targetInput.value = formatDateForInput(targetDate);
+            }, 0);
         }
 
         // NEW: Render content for a specific day
@@ -1246,28 +1275,6 @@
                         <input type="number" id="new-task-goal" placeholder="Total Goal" class="w-full sm:w-32 bg-gray-900 border border-gray-600 rounded-md h-10 px-3 text-center focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" min="1" required>
                         <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 rounded-md h-10 px-5 font-semibold transition-colors flex items-center justify-center">Add Task</button>
                     </form>
-                </div>`);
-            tabPanel.insertAdjacentHTML('beforeend', `
-                <div class="target-date-container">
-                    <div class="date-pickers">
-                        <div class="date-picker-group">
-                            <label for="start-date-input">Start Date</label>
-                            <input type="datetime-local" id="start-date-input">
-                        </div>
-                        <div id="current-day-container">
-                            <div class="circular-progress">
-                                <div class="day-number-container">
-                                    <div class="day-label">Day</div>
-                                    <div class="day-number" id="current-day-number">1</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="date-picker-group">
-                            <label for="target-date-input">Target Deadline</label>
-                            <input type="datetime-local" id="target-date-input">
-                        </div>
-                    </div>
-                    <div id="countdown-timer"></div>
                 </div>`);
             
             updateUI(); // This will now update based on the active day

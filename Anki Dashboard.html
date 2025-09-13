@@ -432,6 +432,7 @@
         #day-tabs-container {
             position: relative;
             display: flex;
+            justify-content: center;
             overflow-x: auto;
             padding-bottom: 2px; /* Space for the underline */
         }
@@ -1369,6 +1370,14 @@
                     calculateAllDailyGoals();
                     saveStateToLocal(); 
                     render(); // Re-render tabs and content
+                    
+                    // Restore date input values after render
+                    setTimeout(() => {
+                        const startInput = document.getElementById('start-date-input');
+                        const targetInput = document.getElementById('target-date-input');
+                        if (startInput) startInput.value = formatDateForInput(startDate);
+                        if (targetInput) targetInput.value = formatDateForInput(targetDate);
+                    }, 0);
                     return;
                 }
 
@@ -1570,7 +1579,7 @@
         function getTotalDays() {
             const diff = targetDate.getTime() - startDate.getTime();
             if (diff < 0) return 1;
-            return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
+            return Math.ceil(diff / (1000 * 60 * 60 * 24));
         }
 
         function getCurrentDay() {

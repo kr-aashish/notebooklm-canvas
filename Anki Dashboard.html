@@ -859,6 +859,8 @@
                 updateSyncStatus('Cloud sync failed, loading local data...', '#f59e0b');
                 loadStateFromLocal();
             }
+            // Ensure dates are loaded from localStorage after cloud pull fails
+            loadStateFromLocal();
             initializeAppUI();
         }
 

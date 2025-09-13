@@ -1319,40 +1319,57 @@
                 }
             }
 
-
+            const totalDays = getTotalDays();
+            
             tasks.forEach(task => {
                 const totalGoal = Number(task.totalGoal);
                 const totalCompleted = Number(progressState[task.id] || 0);
-
-                // Get today's progress from the correct day in the state object
-                const dayKey = `day-${activeDay}`;
-                if (!dailyProgressState[dayKey]) dailyProgressState[dayKey] = {};
-                const todaysCompleted = Number(dailyProgressState[dayKey][task.id] || 0);
-
-                const overallRemaining = totalGoal - totalCompleted;
-                const dailyGoal = dailyGoals[task.id] || 0;
-                const dailyRemaining = Math.max(0, dailyGoal - todaysCompleted);
-
                 const overallPercent = totalGoal > 0 ? (totalCompleted / totalGoal) * 100 : 0;
-                const dailyPercent = dailyGoal > 0 ? (todaysCompleted / dailyGoal) * 100 : 0;
+                const overallRemaining = totalGoal - totalCompleted;
                 
-                // Query selectors now need to be specific to the active panel
-                const activePanel = document.getElementById(`day-panel-${activeDay}`);
-                if (!activePanel) return;
+                // Update all day panels for consistent overall progress
+                for (let dayIndex = 1; dayIndex <= totalDays; dayIndex++) {
+                    const panel = document.getElementById(`day-panel-${dayIndex}`);
+                    if (!panel) continue;
+                    
+                    // Get daily progress for this specific day
+                    const dayKey = `day-${dayIndex}`;
+                    if (!dailyProgressState[dayKey]) dailyProgressState[dayKey] = {};
+                    const dayCompleted = Number(dailyProgressState[dayKey][task.id] || 0);
+                    
+                    const dailyGoal = dailyGoals[task.id] || 0;
+                    const dailyRemaining = Math.max(0, dailyGoal - dayCompleted);
+                    const dailyPercent = dailyGoal > 0 ? (dayCompleted / dailyGoal) * 100 : 0;
+                    
+                    // Update input fields only for active panel
+                    if (dayIndex === activeDay) {
+                        const remainingInput = panel.querySelector(`.task-input-remaining[data-task="${task.id}"]`);
+                        const totalInput = panel.querySelector(`.task-input-total[data-task="${task.id}"]`);
+                        if (remainingInput) remainingInput.value = overallRemaining;
+                        if (totalInput) totalInput.value = totalGoal;
+                    }
+                    
+                    // Update progress bars - these should be consistent across all panels
+                    const dailyBar = panel.querySelector(`#task-progress-bar-daily-${task.id}`);
+                    const overallBar = panel.querySelector(`#task-progress-bar-overall-${task.id}`);
+                    if (dailyBar) dailyBar.style.width = `${Math.min(100, dailyPercent)}%`;
+                    if (overallBar) overallBar.style.width = `${Math.min(100, overallPercent)}%`;
 
-                activePanel.querySelector(`.task-input-remaining[data-task="${task.id}"]`).value = overallRemaining;
-                activePanel.querySelector(`.task-input-total[data-task="${task.id}"]`).value = totalGoal;
-                
-                document.getElementById(`task-progress-bar-daily-${task.id}`).style.width = `${Math.min(100, dailyPercent)}%`;
-                document.getElementById(`task-progress-bar-overall-${task.id}`).style.width = `${Math.min(100, overallPercent)}%`;
-
-                document.getElementById(`daily-completed-${task.id}`).textContent = todaysCompleted;
-                document.getElementById(`daily-remaining-${task.id}`).textContent = dailyRemaining;
-                document.getElementById(`daily-total-${task.id}`).textContent = dailyGoal;
-
-                document.getElementById(`overall-completed-${task.id}`).textContent = totalCompleted;
-                document.getElementById(`overall-remaining-${task.id}`).textContent = overallRemaining;
-                document.getElementById(`overall-total-${task.id}`).textContent = totalGoal;
+                    // Update text content
+                    const dailyCompletedEl = panel.querySelector(`#daily-completed-${task.id}`);
+                    const dailyRemainingEl = panel.querySelector(`#daily-remaining-${task.id}`);
+                    const dailyTotalEl = panel.querySelector(`#daily-total-${task.id}`);
+                    const overallCompletedEl = panel.querySelector(`#overall-completed-${task.id}`);
+                    const overallRemainingEl = panel.querySelector(`#overall-remaining-${task.id}`);
+                    const overallTotalEl = panel.querySelector(`#overall-total-${task.id}`);
+                    
+                    if (dailyCompletedEl) dailyCompletedEl.textContent = dayCompleted;
+                    if (dailyRemainingEl) dailyRemainingEl.textContent = dailyRemaining;
+                    if (dailyTotalEl) dailyTotalEl.textContent = dailyGoal;
+                    if (overallCompletedEl) overallCompletedEl.textContent = totalCompleted;
+                    if (overallRemainingEl) overallRemainingEl.textContent = overallRemaining;
+                    if (overallTotalEl) overallTotalEl.textContent = totalGoal;
+                }
             });
         }
         
@@ -1448,10 +1465,13 @@
                     if (newOverallCompleted >= 0 && newOverallCompleted <= totalGoal) {
                         progressState[taskId] = newOverallCompleted;
                         
-                        // Update daily progress for the active day
-                        const dayKey = `day-${activeDay}`;
-                        if(!dailyProgressState[dayKey]) dailyProgressState[dayKey] = {};
-                        dailyProgressState[dayKey][taskId] = Math.max(0, (dailyProgressState[dayKey][taskId] || 0) + changeAmount);
+                        // Implement overflow logic for daily progress distribution
+                        if (changeAmount > 0) {
+                            distributeDailyProgress(taskId, changeAmount);
+                        } else {
+                            // For negative changes, remove from the most recent days first
+                            removeFromDailyProgress(taskId, Math.abs(changeAmount));
+                        }
                     }
                 } else if (controlBtn.classList.contains('remove-btn')) {
                     tasks = tasks.filter(t => t.id !== taskId);
@@ -1536,9 +1556,14 @@
                 
                 if (newCompleted >= 0 && newCompleted <= totalGoal) {
                     progressState[taskId] = newCompleted;
-                    const dayKey = `day-${activeDay}`;
-                    if(!dailyProgressState[dayKey]) dailyProgressState[dayKey] = {};
-                    dailyProgressState[dayKey][taskId] = Math.max(0, (dailyProgressState[dayKey][taskId] || 0) + changeAmount);
+                    
+                    // Use the same overflow logic for keyboard shortcuts
+                    if (changeAmount > 0) {
+                        distributeDailyProgress(taskId, changeAmount);
+                    } else {
+                        removeFromDailyProgress(taskId, Math.abs(changeAmount));
+                    }
+                    
                     saveStateToLocal();
                     updateUI();
                 }
@@ -1586,6 +1611,60 @@
             const diff = new Date().getTime() - startDate.getTime();
             if (diff < 0) return 1;
             return Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
+        }
+
+        function distributeDailyProgress(taskId, amount) {
+            const dailyGoal = dailyGoals[taskId] || 0;
+            if (dailyGoal === 0) return;
+            
+            const totalDays = getTotalDays();
+            let remainingAmount = amount;
+            
+            // Start from the active day and distribute overflow to subsequent days
+            for (let day = activeDay; day <= totalDays && remainingAmount > 0; day++) {
+                const dayKey = `day-${day}`;
+                if (!dailyProgressState[dayKey]) dailyProgressState[dayKey] = {};
+                
+                const currentDailyProgress = dailyProgressState[dayKey][taskId] || 0;
+                const spaceInDay = Math.max(0, dailyGoal - currentDailyProgress);
+                
+                const addToDay = Math.min(remainingAmount, spaceInDay);
+                if (addToDay > 0) {
+                    dailyProgressState[dayKey][taskId] = currentDailyProgress + addToDay;
+                    remainingAmount -= addToDay;
+                }
+                
+                // If current day is full, continue to next day
+                if (spaceInDay === 0 || addToDay < remainingAmount) {
+                    continue;
+                }
+            }
+            
+            // If there's still remaining amount and we've reached the end, add to the last day
+            if (remainingAmount > 0 && totalDays > 0) {
+                const lastDayKey = `day-${totalDays}`;
+                if (!dailyProgressState[lastDayKey]) dailyProgressState[lastDayKey] = {};
+                dailyProgressState[lastDayKey][taskId] = (dailyProgressState[lastDayKey][taskId] || 0) + remainingAmount;
+            }
+        }
+
+        function removeFromDailyProgress(taskId, amount) {
+            const totalDays = getTotalDays();
+            let remainingAmount = amount;
+            
+            // Remove from the most recent days first (reverse order)
+            for (let day = totalDays; day >= 1 && remainingAmount > 0; day--) {
+                const dayKey = `day-${day}`;
+                if (!dailyProgressState[dayKey]) dailyProgressState[dayKey] = {};
+                
+                const currentDailyProgress = dailyProgressState[dayKey][taskId] || 0;
+                const removeFromDay = Math.min(remainingAmount, currentDailyProgress);
+                
+                if (removeFromDay > 0) {
+                    dailyProgressState[dayKey][taskId] = currentDailyProgress - removeFromDay;
+                    remainingAmount -= removeFromDay;
+                }
+            }
         }
 
         function initializeAppUI() {

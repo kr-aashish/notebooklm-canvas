@@ -761,6 +761,17 @@
                 Push to Cloud
             </button>
         </div>
+        
+        <div id="reset-container" class="mt-6 flex justify-center items-center" style="display: none;">
+            <button id="reset-progress-button" class="group relative flex items-center gap-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl">
+                <div class="absolute inset-0 bg-gradient-to-r from-rose-400 to-pink-400 rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform group-hover:rotate-180 duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span class="relative z-10 tracking-wide">Reset All Progress</span>
+                <div class="absolute inset-0 rounded-xl ring-2 ring-rose-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
+            </button>
+        </div>
         <div id="sync-status" class="mt-2 text-xs text-gray-600 h-4"></div>
         
     </footer>
@@ -851,6 +862,68 @@
             }
         }
 
+        async function handleResetProgress() {
+            // Show confirmation dialog with detailed warning
+            const confirmed = confirm(
+                "⚠️ RESET ALL PROGRESS?\n\n" +
+                "This will permanently delete:\n" +
+                "• All daily progress\n" +
+                "• All overall progress\n" +
+                "• All completed tasks data\n\n" +
+                "This action cannot be undone!\n\n" +
+                "Are you absolutely sure you want to continue?"
+            );
+            
+            if (!confirmed) return;
+            
+            // Double confirmation for safety
+            const doubleConfirmed = confirm(
+                "🚨 FINAL WARNING\n\n" +
+                "You are about to reset ALL progress data.\n" +
+                "Click OK to proceed with the reset, or Cancel to keep your data."
+            );
+            
+            if (!doubleConfirmed) return;
+            
+            try {
+                updateSyncStatus('Resetting all progress...', '#ef4444');
+                
+                // Reset all progress states
+                progressState = {};
+                dailyProgressState = {};
+                
+                // Initialize progress for all existing tasks
+                tasks.forEach(task => {
+                    progressState[task.id] = 0;
+                    dailyProgressState[task.id] = 0;
+                });
+                
+                // Save the reset state to localStorage
+                saveStateToLocal();
+                
+                // Update the UI to reflect the reset
+                updateUI();
+                
+                // Show success message
+                updateSyncStatus('✅ All progress has been reset successfully!', '#10b981');
+                
+                // Optional: Auto-push to cloud if user wants to sync the reset
+                const shouldPushToCloud = confirm(
+                    "Progress reset complete!\n\n" +
+                    "Would you like to sync this reset to the cloud?\n" +
+                    "(This will overwrite any cloud backup with the reset data)"
+                );
+                
+                if (shouldPushToCloud) {
+                    await handlePushToCloud();
+                }
+                
+            } catch (error) {
+                console.error('Error resetting progress:', error);
+                updateSyncStatus('❌ Error resetting progress', '#ef4444');
+            }
+        }
+        
         async function handlePushToCloud() {
             const dataToSync = {
                 studyStartDate: localStorage.getItem('studyStartDate'),
@@ -1312,6 +1385,9 @@
             // Listeners for cloud sync buttons
             document.getElementById('pull-button').addEventListener('click', () => handlePullFromCloud(true));
             document.getElementById('push-button').addEventListener('click', handlePushToCloud);
+            
+            // Listener for reset progress button
+            document.getElementById('reset-progress-button').addEventListener('click', handleResetProgress);
         }
         
         function typeWriter(element, text, callback) {
@@ -1348,6 +1424,7 @@
             render();
             attachEventListeners();
             document.getElementById('sync-container').style.display = 'flex';
+            document.getElementById('reset-container').style.display = 'flex';
             
             document.getElementById('start-date-input').value = formatDateForInput(startDate);
             document.getElementById('target-date-input').value = formatDateForInput(targetDate);

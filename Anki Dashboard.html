@@ -1536,6 +1536,46 @@
             }
 
             document.addEventListener('keydown', (e) => {
+                // Handle arrow keys for tab navigation
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                    // Don't interfere if user is typing in an input field
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                        return;
+                    }
+                    
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const totalDays = getTotalDays();
+                    let newActiveDay = activeDay;
+                    
+                    if (e.key === 'ArrowLeft') {
+                        newActiveDay = activeDay > 1 ? activeDay - 1 : totalDays; // Wrap to last day
+                    } else if (e.key === 'ArrowRight') {
+                        newActiveDay = activeDay < totalDays ? activeDay + 1 : 1; // Wrap to first day
+                    }
+                    
+                    if (newActiveDay !== activeDay) {
+                        // Update UI to switch to new tab
+                        document.querySelector('.day-tab.active').classList.remove('active');
+                        document.querySelector('.tab-panel.active').classList.remove('active');
+                        
+                        const newTab = document.querySelector(`[data-day="${newActiveDay}"]`);
+                        const newPanel = document.getElementById(`day-panel-${newActiveDay}`);
+                        
+                        if (newTab && newPanel) {
+                            newTab.classList.add('active');
+                            newPanel.classList.add('active');
+                            updateTabUnderline(newTab);
+                            
+                            activeDay = newActiveDay;
+                            renderDayContent(activeDay);
+                        }
+                    }
+                    return;
+                }
+                
+                // Handle task increment/decrement keys
                 if (!currentlyHoveredTask) return;
                 
                 if (e.key === '+' || e.key === '=' || e.key === '-' || e.key === ' ') {

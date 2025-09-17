@@ -428,6 +428,134 @@
             transform: scale(1.05);
         }
 
+        /* --- BEAUTIFUL TOGGLE SWITCH --- */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 1.25rem;
+            background: linear-gradient(145deg, #374151, #1f2937);
+            border-radius: 0.75rem;
+            border: 1px solid #4b5563;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+        }
+        
+        .toggle-label {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #d1d5db;
+            user-select: none;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 32px;
+            background: #4b5563;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .toggle-switch.active {
+            background: linear-gradient(45deg, #34d399, #38bdf8);
+            box-shadow: 0 0 20px rgba(52, 211, 153, 0.3), inset 0 1px 2px rgba(255,255,255,0.1);
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(145deg, #f9fafb, #e5e7eb);
+            border-radius: 50%;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2), 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(28px);
+            background: linear-gradient(145deg, #ffffff, #f3f4f6);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3), 0 0 15px rgba(52, 211, 153, 0.2);
+        }
+
+        /* --- GRADIENT BLUR EFFECT --- */
+        .blur-disabled {
+            position: relative;
+            transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        
+        .blur-disabled::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, 
+                rgba(16, 185, 129, 0.15) 0%,
+                rgba(56, 189, 248, 0.2) 15%,
+                rgba(139, 92, 246, 0.25) 30%,
+                rgba(236, 72, 153, 0.2) 45%,
+                rgba(251, 146, 60, 0.15) 60%,
+                rgba(34, 197, 94, 0.2) 75%,
+                rgba(99, 102, 241, 0.25) 90%,
+                rgba(16, 185, 129, 0.15) 100%);
+            backdrop-filter: blur(12px) saturate(1.8);
+            -webkit-backdrop-filter: blur(12px) saturate(1.8);
+            border-radius: 0.5rem;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+            transition: opacity 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+            animation: shimmerBlur 3s ease-in-out infinite alternate;
+        }
+        
+        .blur-disabled.disabled::before {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        @keyframes shimmerBlur {
+            0% {
+                background: linear-gradient(135deg, 
+                    rgba(16, 185, 129, 0.15) 0%,
+                    rgba(56, 189, 248, 0.2) 15%,
+                    rgba(139, 92, 246, 0.25) 30%,
+                    rgba(236, 72, 153, 0.2) 45%,
+                    rgba(251, 146, 60, 0.15) 60%,
+                    rgba(34, 197, 94, 0.2) 75%,
+                    rgba(99, 102, 241, 0.25) 90%,
+                    rgba(16, 185, 129, 0.15) 100%);
+            }
+            50% {
+                background: linear-gradient(135deg, 
+                    rgba(99, 102, 241, 0.2) 0%,
+                    rgba(16, 185, 129, 0.25) 15%,
+                    rgba(56, 189, 248, 0.3) 30%,
+                    rgba(139, 92, 246, 0.25) 45%,
+                    rgba(236, 72, 153, 0.2) 60%,
+                    rgba(251, 146, 60, 0.25) 75%,
+                    rgba(34, 197, 94, 0.3) 90%,
+                    rgba(99, 102, 241, 0.2) 100%);
+            }
+            100% {
+                background: linear-gradient(135deg, 
+                    rgba(236, 72, 153, 0.2) 0%,
+                    rgba(251, 146, 60, 0.25) 15%,
+                    rgba(34, 197, 94, 0.2) 30%,
+                    rgba(99, 102, 241, 0.3) 45%,
+                    rgba(16, 185, 129, 0.25) 60%,
+                    rgba(56, 189, 248, 0.2) 75%,
+                    rgba(139, 92, 246, 0.25) 90%,
+                    rgba(236, 72, 153, 0.2) 100%);
+            }
+        }
+
         /* --- BEAUTIFUL TABS --- */
         #day-tabs-container {
             position: relative;
@@ -435,6 +563,17 @@
             justify-content: center;
             overflow-x: auto;
             padding-bottom: 2px; /* Space for the underline */
+            transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        
+        #day-tabs-container.hidden {
+            opacity: 0;
+            transform: translateY(-20px);
+            pointer-events: none;
+            max-height: 0;
+            overflow: hidden;
+            padding: 0;
+            margin: 0;
         }
         .day-tab {
             padding: 0.75rem 1.25rem;
@@ -847,12 +986,19 @@
         let isAutoSyncing = false;
         let isInitialLoad = true;
         let activeDay = 1;
+        let isDayWiseSplitEnabled = true;
 
         const mainContentContainer = document.getElementById('main-content');
         const titleElement = document.querySelector('header h1');
         const subtitleElement = document.querySelector('header p');
 
         async function initialLoad() {
+            // Load toggle state from localStorage
+            const savedToggleState = localStorage.getItem('isDayWiseSplitEnabled');
+            if (savedToggleState !== null) {
+                isDayWiseSplitEnabled = savedToggleState === 'true';
+            }
+            
             updateSyncStatus('Syncing from cloud...', '#a78bfa');
             const success = await handlePullFromCloud(false);
             if (!success) {
@@ -1156,10 +1302,10 @@
         function render() {
             mainContentContainer.innerHTML = `
                 <div class="relative mb-4">
-                    <div id="day-tabs-container" class="border-b border-gray-700/50"></div>
+                    <div id="day-tabs-container" class="border-b border-gray-700/50 ${!isDayWiseSplitEnabled ? 'hidden' : ''}"></div>
                 </div>
                 <div id="tab-content-container"></div>
-                <div class="target-date-container">
+                <div class="target-date-container blur-disabled ${!isDayWiseSplitEnabled ? 'disabled' : ''}" id="date-container">
                     <div class="date-pickers">
                         <div class="date-picker-group">
                             <label for="start-date-input">Start Date</label>
@@ -1180,22 +1326,41 @@
                     </div>
                     <div id="countdown-timer"></div>
                 </div>
+                <div class="toggle-container">
+                    <span class="toggle-label">Day wise split</span>
+                    <div class="toggle-switch ${isDayWiseSplitEnabled ? 'active' : ''}" id="day-wise-toggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
             `;
             
-            renderTabs();
+            // Only render tabs if day-wise split is enabled
+            if (isDayWiseSplitEnabled) {
+                renderTabs();
 
-            const totalDays = getTotalDays();
-            for (let i = 1; i <= totalDays; i++) {
-                const tabPanel = document.createElement('div');
-                tabPanel.id = `day-panel-${i}`;
-                tabPanel.className = 'tab-panel';
-                if (i === activeDay) {
-                    tabPanel.classList.add('active');
+                const totalDays = getTotalDays();
+                for (let i = 1; i <= totalDays; i++) {
+                    const tabPanel = document.createElement('div');
+                    tabPanel.id = `day-panel-${i}`;
+                    tabPanel.className = 'tab-panel';
+                    if (i === activeDay) {
+                        tabPanel.classList.add('active');
+                    }
+                    document.getElementById('tab-content-container').appendChild(tabPanel);
                 }
+
+                renderDayContent(activeDay);
+            } else {
+                // When disabled, show Day 1 content only (keep all states same)
+                const tabPanel = document.createElement('div');
+                tabPanel.id = 'day-panel-1';
+                tabPanel.className = 'tab-panel active';
                 document.getElementById('tab-content-container').appendChild(tabPanel);
+                renderDayContent(1);
             }
 
-            renderDayContent(activeDay);
+            // Add toggle event listener
+            setupToggleEventListener();
             
             // Set date values after the inputs are created
             setTimeout(() => {
@@ -1205,6 +1370,75 @@
                 if (targetInput) targetInput.value = formatDateForInput(targetDate);
             }, 0);
         }
+
+        // NEW: Setup toggle event listener
+        function setupToggleEventListener() {
+            const toggle = document.getElementById('day-wise-toggle');
+            if (toggle) {
+                toggle.addEventListener('click', () => {
+                    isDayWiseSplitEnabled = !isDayWiseSplitEnabled;
+                    
+                    // Update toggle visual state
+                    if (isDayWiseSplitEnabled) {
+                        toggle.classList.add('active');
+                    } else {
+                        toggle.classList.remove('active');
+                    }
+                    
+                    // Update tabs visibility
+                    const tabsContainer = document.getElementById('day-tabs-container');
+                    if (tabsContainer) {
+                        if (isDayWiseSplitEnabled) {
+                            tabsContainer.classList.remove('hidden');
+                        } else {
+                            tabsContainer.classList.add('hidden');
+                        }
+                    }
+                    
+                    // Update date container blur effect
+                    const dateContainer = document.getElementById('date-container');
+                    if (dateContainer) {
+                        if (isDayWiseSplitEnabled) {
+                            dateContainer.classList.remove('disabled');
+                        } else {
+                            dateContainer.classList.add('disabled');
+                        }
+                    }
+                    
+                    // Re-render content based on toggle state
+                    const tabContentContainer = document.getElementById('tab-content-container');
+                    if (tabContentContainer) {
+                        tabContentContainer.innerHTML = '';
+                        
+                        if (isDayWiseSplitEnabled) {
+                            const totalDays = getTotalDays();
+                            for (let i = 1; i <= totalDays; i++) {
+                                const tabPanel = document.createElement('div');
+                                tabPanel.id = `day-panel-${i}`;
+                                tabPanel.className = 'tab-panel';
+                                if (i === activeDay) {
+                                    tabPanel.classList.add('active');
+                                }
+                                tabContentContainer.appendChild(tabPanel);
+                            }
+                            renderTabs();
+                            renderDayContent(activeDay);
+                        } else {
+                            // When disabled, show Day 1 content only (keep all states same)
+                            const tabPanel = document.createElement('div');
+                            tabPanel.id = 'day-panel-1';
+                            tabPanel.className = 'tab-panel active';
+                            tabContentContainer.appendChild(tabPanel);
+                            renderDayContent(1);
+                        }
+                    }
+                    
+                    // Save state to localStorage
+                    localStorage.setItem('isDayWiseSplitEnabled', isDayWiseSplitEnabled.toString());
+                });
+            }
+        }
+
 
         // NEW: Render content for a specific day
         function renderDayContent(dayIndex) {

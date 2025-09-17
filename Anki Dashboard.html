@@ -497,14 +497,14 @@
             right: 0;
             bottom: 0;
             background: linear-gradient(135deg, 
-                rgba(16, 185, 129, 0.15) 0%,
-                rgba(56, 189, 248, 0.2) 15%,
-                rgba(139, 92, 246, 0.25) 30%,
-                rgba(236, 72, 153, 0.2) 45%,
-                rgba(251, 146, 60, 0.15) 60%,
-                rgba(34, 197, 94, 0.2) 75%,
-                rgba(99, 102, 241, 0.25) 90%,
-                rgba(16, 185, 129, 0.15) 100%);
+                rgba(16, 185, 129, 0.08) 0%,
+                rgba(56, 189, 248, 0.12) 15%,
+                rgba(139, 92, 246, 0.15) 30%,
+                rgba(236, 72, 153, 0.12) 45%,
+                rgba(251, 146, 60, 0.08) 60%,
+                rgba(34, 197, 94, 0.12) 75%,
+                rgba(99, 102, 241, 0.15) 90%,
+                rgba(16, 185, 129, 0.08) 100%);
             backdrop-filter: blur(12px) saturate(1.8);
             -webkit-backdrop-filter: blur(12px) saturate(1.8);
             border-radius: 0.5rem;
@@ -512,48 +512,11 @@
             pointer-events: none;
             z-index: 10;
             transition: opacity 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
-            animation: shimmerBlur 3s ease-in-out infinite alternate;
         }
         
         .blur-disabled.disabled::before {
-            opacity: 1;
+            opacity: 0.85;
             pointer-events: all;
-        }
-
-        @keyframes shimmerBlur {
-            0% {
-                background: linear-gradient(135deg, 
-                    rgba(16, 185, 129, 0.15) 0%,
-                    rgba(56, 189, 248, 0.2) 15%,
-                    rgba(139, 92, 246, 0.25) 30%,
-                    rgba(236, 72, 153, 0.2) 45%,
-                    rgba(251, 146, 60, 0.15) 60%,
-                    rgba(34, 197, 94, 0.2) 75%,
-                    rgba(99, 102, 241, 0.25) 90%,
-                    rgba(16, 185, 129, 0.15) 100%);
-            }
-            50% {
-                background: linear-gradient(135deg, 
-                    rgba(99, 102, 241, 0.2) 0%,
-                    rgba(16, 185, 129, 0.25) 15%,
-                    rgba(56, 189, 248, 0.3) 30%,
-                    rgba(139, 92, 246, 0.25) 45%,
-                    rgba(236, 72, 153, 0.2) 60%,
-                    rgba(251, 146, 60, 0.25) 75%,
-                    rgba(34, 197, 94, 0.3) 90%,
-                    rgba(99, 102, 241, 0.2) 100%);
-            }
-            100% {
-                background: linear-gradient(135deg, 
-                    rgba(236, 72, 153, 0.2) 0%,
-                    rgba(251, 146, 60, 0.25) 15%,
-                    rgba(34, 197, 94, 0.2) 30%,
-                    rgba(99, 102, 241, 0.3) 45%,
-                    rgba(16, 185, 129, 0.25) 60%,
-                    rgba(56, 189, 248, 0.2) 75%,
-                    rgba(139, 92, 246, 0.25) 90%,
-                    rgba(236, 72, 153, 0.2) 100%);
-            }
         }
 
         /* --- BEAUTIFUL TABS --- */

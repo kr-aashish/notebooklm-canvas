@@ -327,48 +327,129 @@
             font-weight: 600;
         }
         
-        /* --- Current Day Display --- */
+        /* --- Current Day Display - BEAUTIFUL PROGRESS BARS --- */
         #current-day-container {
             display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .circular-progress {
-            position: relative;
-            height: 120px;
-            width: 120px;
-            border-radius: 50%;
-            background: conic-gradient(#818cf8 0deg, #374151 0deg); /* indigo-400, gray-700 */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.5s;
+            flex-direction: column;
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 400px;
             animation: fadeInSlideUp 0.8s ease-out forwards;
+        }
+        
+        .progress-bar-container {
+            position: relative;
+            animation: fadeInSlideUp 0.8s ease-out forwards;
+        }
+        
+        .progress-bar-container:nth-child(1) {
             animation-delay: 0.1s;
         }
-        .circular-progress::before {
-            content: "";
-            position: absolute;
-            height: 100px;
-            width: 100px;
-            border-radius: 50%;
-            background-color: #1f2937; /* gray-800 */
+        
+        .progress-bar-container:nth-child(2) {
+            animation-delay: 0.2s;
         }
-        .day-number-container {
-            position: relative;
-            color: #d1d5db;
-            text-align: center;
+        
+        .progress-bar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
         }
+        
+        .progress-bar-label {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
         .day-label {
             font-size: 0.875rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: #9ca3af;
+            font-weight: 600;
         }
+        
         .day-number {
-            font-size: 2.5rem;
+            font-size: 1.5rem;
             font-weight: 700;
-            line-height: 1.1;
+            line-height: 1;
+            background-image: linear-gradient(135deg, #818cf8, #a78bfa);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .progress-bar-container:nth-child(2) .day-number {
+            background-image: linear-gradient(135deg, #34d399, #10b981);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .progress-percentage {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #d1d5db;
+        }
+        
+        .progress-bar-track {
+            position: relative;
+            width: 100%;
+            height: 16px;
+            background: #374151;
+            border-radius: 9999px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .progress-bar-fill-animated {
+            height: 100%;
+            border-radius: 9999px;
+            position: relative;
+            transition: width 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 0 20px rgba(129, 140, 248, 0.5);
+        }
+        
+        /* Day progress bar gradient */
+        .progress-bar-container:nth-child(1) .progress-bar-fill-animated {
+            background: linear-gradient(90deg, #818cf8, #a78bfa, #c084fc);
+            background-size: 200% 100%;
+            animation: shimmerProgress 3s ease-in-out infinite;
+        }
+        
+        /* Week progress bar gradient */
+        .progress-bar-container:nth-child(2) .progress-bar-fill-animated {
+            background: linear-gradient(90deg, #34d399, #10b981, #059669);
+            background-size: 200% 100%;
+            animation: shimmerProgress 3s ease-in-out infinite;
+            box-shadow: 0 0 20px rgba(52, 211, 153, 0.5);
+        }
+        
+        @keyframes shimmerProgress {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        
+        /* Glowing effect on the progress bar */
+        .progress-bar-fill-animated::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255, 255, 255, 0.3) 50%, 
+                transparent 100%);
+            animation: slideShine 2s ease-in-out infinite;
+        }
+        
+        @keyframes slideShine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
         }
 
         /* --- Glossy Animated Card --- */
@@ -1655,17 +1736,29 @@
                             <label for="start-date-input">Start Date</label>
                             <input type="datetime-local" id="start-date-input">
                         </div>
-                        <div id="current-day-container" class="flex gap-6">
-                            <div class="circular-progress" id="day-progress-circle">
-                                <div class="day-number-container">
-                                    <div class="day-label">Day</div>
-                                    <div class="day-number" id="current-day-number">1</div>
+                        <div id="current-day-container">
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-header">
+                                    <div class="progress-bar-label">
+                                        <span class="day-label">Day</span>
+                                        <span class="day-number" id="current-day-number">1</span>
+                                    </div>
+                                    <span class="progress-percentage" id="day-progress-percentage">0%</span>
+                                </div>
+                                <div class="progress-bar-track">
+                                    <div class="progress-bar-fill-animated" id="day-progress-bar" style="width: 0%"></div>
                                 </div>
                             </div>
-                            <div class="circular-progress" id="week-progress-circle">
-                                <div class="day-number-container">
-                                    <div class="day-label">Week</div>
-                                    <div class="day-number" id="current-week-number">1</div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-header">
+                                    <div class="progress-bar-label">
+                                        <span class="day-label">Week</span>
+                                        <span class="day-number" id="current-week-number">1</span>
+                                    </div>
+                                    <span class="progress-percentage" id="week-progress-percentage">0%</span>
+                                </div>
+                                <div class="progress-bar-track">
+                                    <div class="progress-bar-fill-animated" id="week-progress-bar" style="width: 0%"></div>
                                 </div>
                             </div>
                         </div>
@@ -2212,21 +2305,25 @@
                 
                 // Day Progress
                 const progressOfDay = (timeSinceStart % dayMillis) / dayMillis;
-                const dayAngle = progressOfDay * 360;
-                const dayCircle = document.getElementById('day-progress-circle');
+                const dayProgressPercent = Math.round(progressOfDay * 100);
+                const dayProgressBar = document.getElementById('day-progress-bar');
+                const dayProgressPercentageEl = document.getElementById('day-progress-percentage');
                 const dayNumberEl = document.getElementById('current-day-number');
 
-                if (dayCircle) dayCircle.style.background = `conic-gradient(#818cf8 ${dayAngle}deg, #374151 ${dayAngle}deg)`;
+                if (dayProgressBar) dayProgressBar.style.width = `${dayProgressPercent}%`;
+                if (dayProgressPercentageEl) dayProgressPercentageEl.textContent = `${dayProgressPercent}%`;
                 if (dayNumberEl) dayNumberEl.textContent = currentDayNumber;
 
                 // Week Progress
                 const progressOfWeek = (timeSinceStart % weekMillis) / weekMillis;
-                const weekAngle = progressOfWeek * 360;
-                const weekCircle = document.getElementById('week-progress-circle');
+                const weekProgressPercent = Math.round(progressOfWeek * 100);
+                const weekProgressBar = document.getElementById('week-progress-bar');
+                const weekProgressPercentageEl = document.getElementById('week-progress-percentage');
                 const weekNumberEl = document.getElementById('current-week-number');
                 const currentWeekNumber = Math.ceil(currentDayNumber / 7);
 
-                if (weekCircle) weekCircle.style.background = `conic-gradient(#34d399 ${weekAngle}deg, #374151 ${weekAngle}deg)`; // Emerald for week
+                if (weekProgressBar) weekProgressBar.style.width = `${weekProgressPercent}%`;
+                if (weekProgressPercentageEl) weekProgressPercentageEl.textContent = `${weekProgressPercent}%`;
                 if (weekNumberEl) weekNumberEl.textContent = currentWeekNumber;
             }
 

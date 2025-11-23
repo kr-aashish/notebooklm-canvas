@@ -1750,18 +1750,21 @@
                     const weeklyGoal = Math.ceil(Number(task.totalGoal) / weeks);
                     const dailyGoal = dailyGoals[task.id] || 0;
                     
+                    const goalLabel = isWeekly ? 'Weekly Goal' : 'Daily Goal';
+                    const goalValue = isWeekly ? weeklyGoal : dailyGoal;
+                    
                     // Weekly Logic
                     let weeklyProgressText = '';
                     let weeklyProgressValue = 0;
-                    let progressThisWeek = 0;
-                    const currentWeek = Math.ceil(getCurrentDay() / 7);
                     
                     if (isWeekly) {
+                        const currentWeek = Math.ceil(getCurrentDay() / 7);
                         const daysLeftInWeek = 7 - ((getCurrentDay() - 1) % 7);
                         
                         // Calculate progress for this week
                         const startDayOfCurrentWeek = (currentWeek - 1) * 7 + 1;
                         const endDayOfCurrentWeek = currentWeek * 7;
+                        let progressThisWeek = 0;
                         
                         for (let d = startDayOfCurrentWeek; d <= endDayOfCurrentWeek; d++) {
                             const dKey = `day-${d}`;
@@ -1774,34 +1777,6 @@
                             <div class="mt-2 p-2 bg-gray-900/50 rounded border border-gray-700 flex justify-between items-center text-xs">
                                 <span class="text-emerald-400 font-medium">Week ${currentWeek} Progress: ${progressThisWeek} / ${weeklyGoal}</span>
                                 <span class="text-gray-400">${daysLeftInWeek} days left in week</span>
-                            </div>
-                        `;
-                    }
-
-                    // Progress Section HTML
-                    let progressSectionHTML = '';
-                    if (isWeekly) {
-                        progressSectionHTML = `
-                            <div class="progress-display">
-                                <h4 class="font-semibold text-gray-300">Week ${currentWeek} Progress</h4>
-                                <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-weekly-${task.id}" class="progress-bar-fill progress-bar-weekly" style="width: 0%"></div></div>
-                                <div class="progress-stats">
-                                    <div class="stat-item text-center"><div class="label">Completed</div><div id="weekly-completed-${task.id}" class="value completed">0</div></div>
-                                    <div class="stat-item text-center"><div class="label">Remaining</div><div id="weekly-remaining-${task.id}" class="value">0</div></div>
-                                    <div class="stat-item text-center"><div class="label">Goal</div><div id="weekly-total-${task.id}" class="value">${weeklyGoal}</div></div>
-                                </div>
-                            </div>
-                        `;
-                    } else {
-                        progressSectionHTML = `
-                            <div class="progress-display">
-                                <h4 class="font-semibold text-gray-300">Day ${dayIndex} Progress</h4>
-                                <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-daily-${task.id}" class="progress-bar-fill progress-bar-daily" style="width: 0%"></div></div>
-                                <div class="progress-stats">
-                                    <div class="stat-item text-center"><div class="label">Completed</div><div id="daily-completed-${task.id}" class="value completed">0</div></div>
-                                    <div class="stat-item text-center"><div class="label">Remaining</div><div id="daily-remaining-${task.id}" class="value">0</div></div>
-                                    <div class="stat-item text-center"><div class="label">Goal</div><div id="daily-total-${task.id}" class="value">0</div></div>
-                                </div>
                             </div>
                         `;
                     }
@@ -1823,7 +1798,7 @@
                                                 <span class="text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-400 border border-gray-600">${isWeekly ? 'Weekly' : 'Daily'}</span>
                                             </div>
                                             <div class="text-xs text-gray-500 mt-1">Target: <span class="text-emerald-400 font-medium">${goalValue}</span> / ${isWeekly ? 'week' : 'day'}</div>
-                                            ${isWeekly ? '' : '' /* Removed extra weekly text since we have the main block now, or keep it as summary? User said "show weekly progress INSTEAD of daily". So I will remove the extra summary text I added in previous step to avoid redundancy, OR keep it if it adds value. The user said "show weekly progress instead of daily progress", which implies the main block. I'll remove the small summary text I added before to be cleaner. */}
+                                            ${weeklyProgressText}
                                         </div>
                                         <button class="control-btn edit-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-sky-600 transition-colors flex items-center justify-center text-gray-300 hover:text-white" data-task="${task.id}" title="Edit Task">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1847,7 +1822,15 @@
                                 </div>
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                                    ${progressSectionHTML}
+                                    <div class="progress-display">
+                                        <h4 class="font-semibold text-gray-300">Day ${dayIndex} Progress</h4>
+                                        <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-daily-${task.id}" class="progress-bar-fill progress-bar-daily" style="width: 0%"></div></div>
+                                        <div class="progress-stats">
+                                            <div class="stat-item text-center"><div class="label">Completed</div><div id="daily-completed-${task.id}" class="value completed">0</div></div>
+                                            <div class="stat-item text-center"><div class="label">Remaining</div><div id="daily-remaining-${task.id}" class="value">0</div></div>
+                                            <div class="stat-item text-center"><div class="label">Goal</div><div id="daily-total-${task.id}" class="value">0</div></div>
+                                        </div>
+                                    </div>
                                     <div class="progress-display">
                                         <h4 class="font-semibold text-gray-300">Overall Progress</h4>
                                         <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-overall-${task.id}" class="progress-bar-fill progress-bar-overall" style="width: 0%"></div></div>
@@ -1858,7 +1841,6 @@
                                         </div>
                                     </div>
                                 </div>
-                                ${isWeekly ? `<div class="text-xs text-gray-500 text-right mt-1">${daysLeftInWeek} days left in week</div>` : ''}
                             </div>
 
                             <!-- Edit View (Hidden by default) -->
@@ -2150,83 +2132,59 @@
             }
 
             const totalDays = getTotalDays();
-    
-    tasks.forEach(task => {
-        const isWeekly = task.trackingMode === 'weekly';
-        const totalDays = getTotalDays();
-        const weeks = Math.max(1, totalDays / 7);
-        const weeklyGoal = Math.ceil(Number(task.totalGoal) / weeks);
-        const dailyGoal = dailyGoals[task.id] || 0;
-        
-        const currentDayKey = `day-${activeDay}`;
-        const dailyCompleted = (dailyProgressState[currentDayKey] && dailyProgressState[currentDayKey][task.id]) || 0;
-        
-        // Update Inputs
-        const remainingInput = document.querySelector(`.task-input-remaining[data-task="${task.id}"]`);
-        if (remainingInput) {
-            remainingInput.value = task.totalGoal - (progressState[task.id] || 0);
-        }
-
-        // Update Overall Progress
-        const overallCompleted = progressState[task.id] || 0;
-        const overallTotal = Number(task.totalGoal);
-        const overallPercent = Math.min(100, Math.max(0, (overallCompleted / overallTotal) * 100));
-        
-        const overallBar = document.getElementById(`task-progress-bar-overall-${task.id}`);
-        if (overallBar) overallBar.style.width = `${overallPercent}%`;
-        
-        const overallCompletedEl = document.getElementById(`overall-completed-${task.id}`);
-        if (overallCompletedEl) overallCompletedEl.textContent = overallCompleted;
-        
-        const overallRemainingEl = document.getElementById(`overall-remaining-${task.id}`);
-        if (overallRemainingEl) overallRemainingEl.textContent = overallTotal - overallCompleted;
-
-        // Update Daily OR Weekly Progress
-        if (isWeekly) {
-            const currentWeek = Math.ceil(activeDay / 7);
-            const startDayOfCurrentWeek = (currentWeek - 1) * 7 + 1;
-            const endDayOfCurrentWeek = currentWeek * 7;
-            let weeklyCompleted = 0;
             
-            for (let d = startDayOfCurrentWeek; d <= endDayOfCurrentWeek; d++) {
-                const dKey = `day-${d}`;
-                if (dailyProgressState[dKey]) {
-                    weeklyCompleted += (dailyProgressState[dKey][task.id] || 0);
+            tasks.forEach(task => {
+                const totalGoal = Number(task.totalGoal);
+                const totalCompleted = Number(progressState[task.id] || 0);
+                const overallPercent = totalGoal > 0 ? (totalCompleted / totalGoal) * 100 : 0;
+                const overallRemaining = totalGoal - totalCompleted;
+                
+                // Update all day panels for consistent overall progress
+                for (let dayIndex = 1; dayIndex <= totalDays; dayIndex++) {
+                    const panel = document.getElementById(`day-panel-${dayIndex}`);
+                    if (!panel) continue;
+                    
+                    // Get daily progress for this specific day
+                    const dayKey = `day-${dayIndex}`;
+                    if (!dailyProgressState[dayKey]) dailyProgressState[dayKey] = {};
+                    const dayCompleted = Number(dailyProgressState[dayKey][task.id] || 0);
+                    
+                    const dailyGoal = dailyGoals[task.id] || 0;
+                    const dailyRemaining = Math.max(0, dailyGoal - dayCompleted);
+                    const dailyPercent = dailyGoal > 0 ? (dayCompleted / dailyGoal) * 100 : 0;
+                    
+                    // Update input fields only for active panel
+                    if (dayIndex === activeDay) {
+                        const remainingInput = panel.querySelector(`.task-input-remaining[data-task="${task.id}"]`);
+                        const totalInput = panel.querySelector(`.task-input-total[data-task="${task.id}"]`);
+                        if (remainingInput) remainingInput.value = overallRemaining;
+                        if (totalInput) totalInput.value = totalGoal;
+                    }
+                    
+                    // Update progress bars - these should be consistent across all panels
+                    const dailyBar = panel.querySelector(`#task-progress-bar-daily-${task.id}`);
+                    const overallBar = panel.querySelector(`#task-progress-bar-overall-${task.id}`);
+                    if (dailyBar) dailyBar.style.width = `${Math.min(100, dailyPercent)}%`;
+                    if (overallBar) overallBar.style.width = `${Math.min(100, overallPercent)}%`;
+
+                    // Update text content
+                    const dailyCompletedEl = panel.querySelector(`#daily-completed-${task.id}`);
+                    const dailyRemainingEl = panel.querySelector(`#daily-remaining-${task.id}`);
+                    const dailyTotalEl = panel.querySelector(`#daily-total-${task.id}`);
+                    const overallCompletedEl = panel.querySelector(`#overall-completed-${task.id}`);
+                    const overallRemainingEl = panel.querySelector(`#overall-remaining-${task.id}`);
+                    const overallTotalEl = panel.querySelector(`#overall-total-${task.id}`);
+                    
+                    if (dailyCompletedEl) dailyCompletedEl.textContent = dayCompleted;
+                    if (dailyRemainingEl) dailyRemainingEl.textContent = dailyRemaining;
+                    if (dailyTotalEl) dailyTotalEl.textContent = dailyGoal;
+                    if (overallCompletedEl) overallCompletedEl.textContent = totalCompleted;
+                    if (overallRemainingEl) overallRemainingEl.textContent = overallRemaining;
+                    if (overallTotalEl) overallTotalEl.textContent = totalGoal;
                 }
-            }
-            
-            const weeklyPercent = Math.min(100, Math.max(0, (weeklyCompleted / weeklyGoal) * 100));
-            
-            const weeklyBar = document.getElementById(`task-progress-bar-weekly-${task.id}`);
-            if (weeklyBar) weeklyBar.style.width = `${weeklyPercent}%`;
-            
-            const weeklyCompletedEl = document.getElementById(`weekly-completed-${task.id}`);
-            if (weeklyCompletedEl) weeklyCompletedEl.textContent = weeklyCompleted;
-            
-            const weeklyRemainingEl = document.getElementById(`weekly-remaining-${task.id}`);
-            if (weeklyRemainingEl) weeklyRemainingEl.textContent = Math.max(0, weeklyGoal - weeklyCompleted);
-            
-            const weeklyTotalEl = document.getElementById(`weekly-total-${task.id}`);
-            if (weeklyTotalEl) weeklyTotalEl.textContent = weeklyGoal;
-            
-        } else {
-            // Daily Progress
-            const dailyPercent = Math.min(100, Math.max(0, (dailyCompleted / dailyGoal) * 100));
-            
-            const dailyBar = document.getElementById(`task-progress-bar-daily-${task.id}`);
-            if (dailyBar) dailyBar.style.width = `${dailyPercent}%`;
-            
-            const dailyCompletedEl = document.getElementById(`daily-completed-${task.id}`);
-            if (dailyCompletedEl) dailyCompletedEl.textContent = dailyCompleted;
-            
-            const dailyRemainingEl = document.getElementById(`daily-remaining-${task.id}`);
-            if (dailyRemainingEl) dailyRemainingEl.textContent = Math.max(0, dailyGoal - dailyCompleted);
-            
-            const dailyTotalEl = document.getElementById(`daily-total-${task.id}`);
-            if (dailyTotalEl) dailyTotalEl.textContent = dailyGoal;
+            });
         }
-    });
-}    
+        
         function attachEventListeners() {
             // Use event delegation on the main container to handle events for dynamic content
             mainContentContainer.addEventListener('input', e => {

@@ -520,50 +520,189 @@
         }
 
         /* --- BEAUTIFUL TABS --- */
-        #day-tabs-container {
+        /* --- BEAUTIFUL SCROLLABLE TABS --- */
+        .tabs-wrapper {
             position: relative;
             display: flex;
-            justify-content: center;
-            overflow-x: auto;
-            padding-bottom: 2px; /* Space for the underline */
+            align-items: center;
+            margin-bottom: 2px; /* Space for underline */
+            opacity: 1;
             transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
         
-        #day-tabs-container.hidden {
+        .tabs-wrapper.hidden {
             opacity: 0;
             transform: translateY(-20px);
             pointer-events: none;
             max-height: 0;
             overflow: hidden;
-            padding: 0;
             margin: 0;
         }
+
+        /* Gradient Masks for smooth fade effect */
+        .tabs-mask-left, .tabs-mask-right {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 40px;
+            z-index: 10;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .tabs-mask-left {
+            left: 0;
+            background: linear-gradient(to right, #111827, transparent);
+            opacity: 0; /* Hidden by default */
+        }
+        .tabs-mask-right {
+            right: 0;
+            background: linear-gradient(to left, #111827, transparent);
+        }
+
+        /* Scroll Buttons */
+        .scroll-btn {
+            position: absolute;
+            z-index: 20;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(31, 41, 55, 0.8); /* gray-800 with opacity */
+            border: 1px solid #4b5563;
+            color: #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(4px);
+            opacity: 0;
+            pointer-events: none; /* Click-through when hidden */
+        }
+        .scroll-btn:hover {
+            background: #374151;
+            color: #38bdf8;
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+        }
+        .scroll-btn.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .scroll-btn-left { left: 0; }
+        .scroll-btn-right { right: 0; }
+
+        #day-tabs-container {
+            position: relative;
+            display: flex;
+            justify-content: flex-start; /* Changed from center */
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none;  /* IE 10+ */
+            padding: 0 40px; /* Space for buttons/masks */
+            gap: 0.5rem;
+            width: 100%;
+            cursor: grab; /* Suggests drag capability */
+        }
+        #day-tabs-container::-webkit-scrollbar { 
+            display: none; /* Chrome/Safari */
+        }
+        
+        #day-tabs-container.is-dragging {
+            cursor: grabbing;
+            scroll-behavior: auto; /* Disable smooth scroll during drag for responsiveness */
+            user-select: none;
+        }
+
         .day-tab {
-            padding: 0.75rem 1.25rem;
+            padding: 0.75rem 1.5rem;
             cursor: pointer;
             color: #9ca3af; /* gray-400 */
             font-weight: 600;
             border: none;
-            background: none;
+            background: transparent;
             white-space: nowrap;
-            transition: color 0.3s ease;
+            transition: all 0.3s ease;
             position: relative;
             z-index: 2;
+            border-radius: 0.5rem;
+            flex-shrink: 0; /* Prevent shrinking */
         }
         .day-tab:hover {
             color: #e5e7eb; /* gray-200 */
+            background: rgba(55, 65, 81, 0.5); /* Subtle hover bg */
         }
         .day-tab.active {
             color: #38bdf8; /* sky-400 */
+            background: rgba(56, 189, 248, 0.1); /* Subtle active bg */
         }
+        
+        /* Animated Underline */
         #tab-active-underline {
             position: absolute;
             bottom: 0;
             height: 3px;
             background-image: linear-gradient(to right, #22d3ee, #38bdf8);
             border-radius: 9999px;
-            transition: left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
             z-index: 1;
+            pointer-events: none;
+        }
+
+        /* --- DRAG & DROP STYLES --- */
+        .task-item {
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+        .task-item.dragging {
+            opacity: 0.5;
+            transform: scale(0.98);
+            z-index: 100;
+        }
+        .drag-handle {
+            cursor: grab;
+            color: #6b7280;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+        }
+        .drag-handle:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e5e7eb;
+        }
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        /* --- EDIT MODE STYLES --- */
+        .edit-mode-container {
+            animation: fadeIn 0.3s ease-out;
+        }
+        .toggle-switch-sm {
+            position: relative;
+            width: 40px;
+            height: 22px;
+            background: #4b5563;
+            border-radius: 11px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .toggle-switch-sm.active {
+            background: #10b981; /* Emerald-500 */
+        }
+        .toggle-slider-sm {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+        .toggle-switch-sm.active .toggle-slider-sm {
+            transform: translateX(18px);
         }
 
         /* --- Tab Content --- */
@@ -1204,9 +1343,11 @@
         function syncAndValidateState() {
             const taskIds = new Set(tasks.map(t => t.id));
             Object.keys(progressState).forEach(id => { if (!taskIds.has(id)) delete progressState[id]; });
-            // No longer need to validate dailyProgressState here as it's a nested object
+            
             tasks.forEach(task => {
                 if (progressState[task.id] === undefined) progressState[task.id] = 0;
+                // Default to 'daily' if not set (migration)
+                if (!task.trackingMode) task.trackingMode = 'daily';
             });
         }
         
@@ -1221,36 +1362,174 @@
             });
         }
         
-        // NEW: Render Tabs function
+        // NEW: Render Tabs function with enhanced UX
         function renderTabs() {
             const totalDays = getTotalDays();
             const currentDay = getCurrentDay();
-            activeDay = currentDay;
+            
+            // On initial load, jump to the current day
+            if (isInitialLoad) {
+                activeDay = currentDay;
+            }
+
+            // Ensure activeDay is within bounds
+            if (activeDay > totalDays) activeDay = totalDays;
+            if (activeDay < 1) activeDay = 1;
+
+            const wrapper = document.getElementById('tabs-wrapper-el');
+            if (!wrapper) return;
+
+            // Re-build the entire structure
+            wrapper.innerHTML = `
+                <div class="tabs-mask-left" id="tabs-mask-left"></div>
+                <button class="scroll-btn scroll-btn-left" id="scroll-btn-left" aria-label="Scroll Left">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                
+                <div id="day-tabs-container">
+                    <!-- Tabs injected here -->
+                    <div id="tab-active-underline"></div>
+                </div>
+
+                <button class="scroll-btn scroll-btn-right" id="scroll-btn-right" aria-label="Scroll Right">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                <div class="tabs-mask-right" id="tabs-mask-right"></div>
+            `;
 
             const tabsContainer = document.getElementById('day-tabs-container');
-            if (!tabsContainer) return;
+            const underline = document.getElementById('tab-active-underline');
 
-            tabsContainer.innerHTML = ''; // Clear existing tabs
+            // Generate Tab Buttons
             for (let i = 1; i <= totalDays; i++) {
                 const tabButton = document.createElement('button');
                 tabButton.className = 'day-tab';
                 tabButton.dataset.day = i;
                 tabButton.textContent = `Day ${i}`;
-                if (i === currentDay) {
+                if (i === activeDay) {
                     tabButton.classList.add('active');
                 }
-                tabsContainer.appendChild(tabButton);
+                // Insert before the underline
+                tabsContainer.insertBefore(tabButton, underline);
             }
-            tabsContainer.innerHTML += `<div id="tab-active-underline"></div>`;
             
-            // Scroll to the active tab
+            // Initialize Scroll Logic
+            setupTabsInteraction(tabsContainer);
+            
+            // Initial centering
             setTimeout(() => {
-                const activeTabEl = tabsContainer.querySelector('.day-tab.active');
-                if (activeTabEl) {
-                    activeTabEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                    updateTabUnderline(activeTabEl);
-                }
+                centerActiveTab(false); // false = no smooth scroll for initial load
+                updateScrollControls(tabsContainer);
+                updateTabUnderline(tabsContainer.querySelector('.day-tab.active'));
             }, 100);
+        }
+
+        function setupTabsInteraction(container) {
+            const leftBtn = document.getElementById('scroll-btn-left');
+            const rightBtn = document.getElementById('scroll-btn-right');
+            
+            // 1. Button Scrolling
+            leftBtn.addEventListener('click', () => {
+                container.scrollBy({ left: -200, behavior: 'smooth' });
+            });
+            rightBtn.addEventListener('click', () => {
+                container.scrollBy({ left: 200, behavior: 'smooth' });
+            });
+
+            // 2. Scroll Event (Update buttons/masks)
+            container.addEventListener('scroll', () => {
+                updateScrollControls(container);
+            });
+
+            // 3. Drag to Scroll (Mouse)
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+
+            container.addEventListener('mousedown', (e) => {
+                isDown = true;
+                container.classList.add('is-dragging');
+                startX = e.pageX - container.offsetLeft;
+                scrollLeft = container.scrollLeft;
+            });
+            
+            container.addEventListener('mouseleave', () => {
+                isDown = false;
+                container.classList.remove('is-dragging');
+            });
+            
+            container.addEventListener('mouseup', () => {
+                isDown = false;
+                container.classList.remove('is-dragging');
+            });
+            
+            container.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - container.offsetLeft;
+                const walk = (x - startX) * 2; // Scroll-fast
+                container.scrollLeft = scrollLeft - walk;
+            });
+        }
+
+        function updateScrollControls(container) {
+            const leftBtn = document.getElementById('scroll-btn-left');
+            const rightBtn = document.getElementById('scroll-btn-right');
+            const leftMask = document.getElementById('tabs-mask-left');
+            const rightMask = document.getElementById('tabs-mask-right');
+            
+            if (!leftBtn || !rightBtn) return;
+
+            // Tolerance for float calculations
+            const isAtStart = container.scrollLeft <= 1;
+            const isAtEnd = Math.abs(container.scrollWidth - container.clientWidth - container.scrollLeft) <= 1;
+            const hasOverflow = container.scrollWidth > container.clientWidth;
+
+            if (hasOverflow) {
+                if (isAtStart) {
+                    leftBtn.classList.remove('visible');
+                    leftMask.style.opacity = '0';
+                } else {
+                    leftBtn.classList.add('visible');
+                    leftMask.style.opacity = '1';
+                }
+
+                if (isAtEnd) {
+                    rightBtn.classList.remove('visible');
+                    rightMask.style.opacity = '0';
+                } else {
+                    rightBtn.classList.add('visible');
+                    rightMask.style.opacity = '1';
+                }
+            } else {
+                // No scrolling needed
+                leftBtn.classList.remove('visible');
+                rightBtn.classList.remove('visible');
+                leftMask.style.opacity = '0';
+                rightMask.style.opacity = '0';
+            }
+        }
+
+        function centerActiveTab(smooth = true) {
+            const container = document.getElementById('day-tabs-container');
+            const activeTab = container.querySelector('.day-tab.active');
+            if (activeTab) {
+                const containerWidth = container.clientWidth;
+                const tabLeft = activeTab.offsetLeft;
+                const tabWidth = activeTab.offsetWidth;
+                
+                // Calculate center position
+                const targetScrollLeft = tabLeft - (containerWidth / 2) + (tabWidth / 2);
+                
+                container.scrollTo({
+                    left: targetScrollLeft,
+                    behavior: smooth ? 'smooth' : 'auto'
+                });
+            }
         }
 
         // NEW: Update tab underline position
@@ -1265,7 +1544,9 @@
         function render() {
             mainContentContainer.innerHTML = `
                 <div class="relative mb-4">
-                    <div id="day-tabs-container" class="border-b border-gray-700/50 ${!isDayWiseSplitEnabled ? 'hidden' : ''}"></div>
+                    <div id="tabs-wrapper-el" class="tabs-wrapper ${!isDayWiseSplitEnabled ? 'hidden' : ''}">
+                        <!-- Content injected by renderTabs() -->
+                    </div>
                 </div>
                 <div id="tab-content-container"></div>
                 <div class="target-date-container blur-disabled ${!isDayWiseSplitEnabled ? 'disabled' : ''}" id="date-container">
@@ -1349,12 +1630,12 @@
                     }
                     
                     // Update tabs visibility
-                    const tabsContainer = document.getElementById('day-tabs-container');
-                    if (tabsContainer) {
+                    const tabsWrapper = document.getElementById('tabs-wrapper-el');
+                    if (tabsWrapper) {
                         if (isDayWiseSplitEnabled) {
-                            tabsContainer.classList.remove('hidden');
+                            tabsWrapper.classList.remove('hidden');
                         } else {
-                            tabsContainer.classList.add('hidden');
+                            tabsWrapper.classList.add('hidden');
                         }
                     }
                     
@@ -1420,43 +1701,111 @@
                 tasks.forEach((task, taskIndex) => {
                     const taskItem = document.createElement('div');
                     taskItem.className = 'task-item'; 
+                    taskItem.draggable = true; // Enable Drag
+                    taskItem.dataset.id = task.id;
                     taskItem.style.animationDelay = `${taskIndex * 50}ms`;
-                    taskItem.innerHTML = `
-                        <div class="task-card bg-gray-800 rounded-lg shadow-md p-4 flex flex-col gap-4">
-                            <div class="flex flex-col xl:flex-row items-start justify-between gap-4">
-                                <span class="font-semibold text-xl text-gray-200">${task.name}</span>
-                                <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0 self-end xl:self-center">
-                                    <button class="control-btn remove-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-rose-600 transition-colors flex items-center justify-center" data-task="${task.id}" title="Remove Task"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                                    <button class="control-btn minus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-red-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="-1" title="Decrease count for Day ${dayIndex}">-</button>
+                    
+                    // Calculate Goal Display
+                    const isWeekly = task.trackingMode === 'weekly';
+                    const totalDays = getTotalDays();
+                    const weeks = Math.max(1, totalDays / 7);
+                    const weeklyGoal = Math.ceil(Number(task.totalGoal) / weeks);
+                    const dailyGoal = dailyGoals[task.id] || 0;
+                    
+                    const goalLabel = isWeekly ? 'Weekly Goal' : 'Daily Goal';
+                    const goalValue = isWeekly ? weeklyGoal : dailyGoal;
 
-                                    <div class="input-group">
-                                        <span class="text-gray-400 text-sm whitespace-nowrap pl-2">Remaining:</span>
-                                        <input type="number" class="task-input-remaining" value="0" min="0" data-task="${task.id}">
-                                        <span class="separator">/</span>
-                                        <input type="number" class="task-input-total" value="${task.totalGoal}" min="0" data-task="${task.id}">
+                    taskItem.innerHTML = `
+                        <div class="task-card bg-gray-800 rounded-lg shadow-md p-4 flex flex-col gap-4 group">
+                            <!-- Normal View -->
+                            <div class="view-mode" id="view-mode-${task.id}">
+                                <div class="flex flex-col xl:flex-row items-start justify-between gap-4">
+                                    <div class="flex items-center gap-3 w-full">
+                                        <div class="drag-handle" title="Drag to reorder">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
+                                            </svg>
+                                        </div>
+                                        <div class="flex-grow">
+                                            <div class="flex items-center gap-2">
+                                                <span class="font-semibold text-xl text-gray-200">${task.name}</span>
+                                                <span class="text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-400 border border-gray-600">${isWeekly ? 'Weekly' : 'Daily'}</span>
+                                            </div>
+                                            <div class="text-xs text-gray-500 mt-1">Target: <span class="text-emerald-400 font-medium">${goalValue}</span> / ${isWeekly ? 'week' : 'day'}</div>
+                                        </div>
+                                        <button class="control-btn edit-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-sky-600 transition-colors flex items-center justify-center text-gray-300 hover:text-white" data-task="${task.id}" title="Edit Task">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                            </svg>
+                                        </button>
                                     </div>
 
-                                    <button class="control-btn plus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-green-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="1" title="Increase count for Day ${dayIndex}">+</button>
+                                    <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0 self-end xl:self-center">
+                                        <button class="control-btn minus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-red-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="-1" title="Decrease count">-</button>
+
+                                        <div class="input-group">
+                                            <span class="text-gray-400 text-sm whitespace-nowrap pl-2">Remaining:</span>
+                                            <input type="number" class="task-input-remaining" value="0" min="0" data-task="${task.id}">
+                                            <span class="separator">/</span>
+                                            <span class="text-gray-400 font-medium w-16 text-center">${task.totalGoal}</span>
+                                        </div>
+
+                                        <button class="control-btn plus-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-green-500 transition-colors flex items-center justify-center font-bold text-xl" data-task="${task.id}" data-change="1" title="Increase count">+</button>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                    <div class="progress-display">
+                                        <h4 class="font-semibold text-gray-300">Day ${dayIndex} Progress</h4>
+                                        <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-daily-${task.id}" class="progress-bar-fill progress-bar-daily" style="width: 0%"></div></div>
+                                        <div class="progress-stats">
+                                            <div class="stat-item text-center"><div class="label">Completed</div><div id="daily-completed-${task.id}" class="value completed">0</div></div>
+                                            <div class="stat-item text-center"><div class="label">Remaining</div><div id="daily-remaining-${task.id}" class="value">0</div></div>
+                                            <div class="stat-item text-center"><div class="label">Goal</div><div id="daily-total-${task.id}" class="value">0</div></div>
+                                        </div>
+                                    </div>
+                                    <div class="progress-display">
+                                        <h4 class="font-semibold text-gray-300">Overall Progress</h4>
+                                        <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-overall-${task.id}" class="progress-bar-fill progress-bar-overall" style="width: 0%"></div></div>
+                                        <div class="progress-stats">
+                                            <div class="stat-item text-center"><div class="label">Completed</div><div id="overall-completed-${task.id}" class="value completed">0</div></div>
+                                            <div class="stat-item text-center"><div class="label">Remaining</div><div id="overall-remaining-${task.id}" class="value">0</div></div>
+                                            <div class="stat-item text-center"><div class="label">Total</div><div id="overall-total-${task.id}" class="value">${task.totalGoal}</div></div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="progress-display">
-                                    <h4 class="font-semibold text-gray-300">Day ${dayIndex} Progress</h4>
-                                    <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-daily-${task.id}" class="progress-bar-fill progress-bar-daily" style="width: 0%"></div></div>
-                                    <div class="progress-stats">
-                                        <div class="stat-item text-center"><div class="label">Completed</div><div id="daily-completed-${task.id}" class="value completed">0</div></div>
-                                        <div class="stat-item text-center"><div class="label">Remaining</div><div id="daily-remaining-${task.id}" class="value">0</div></div>
-                                        <div class="stat-item text-center"><div class="label">Total</div><div id="daily-total-${task.id}" class="value">0</div></div>
+                            <!-- Edit View (Hidden by default) -->
+                            <div class="edit-mode-container hidden" id="edit-mode-${task.id}">
+                                <div class="flex flex-col gap-4 bg-gray-900/50 p-4 rounded-lg border border-gray-700">
+                                    <h4 class="text-lg font-semibold text-gray-200">Edit Task</h4>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm text-gray-400 mb-1">Task Name</label>
+                                            <input type="text" id="edit-name-${task.id}" value="${task.name}" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-gray-200 focus:ring-2 focus:ring-sky-500">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm text-gray-400 mb-1">Total Goal</label>
+                                            <input type="number" id="edit-goal-${task.id}" value="${task.totalGoal}" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-gray-200 focus:ring-2 focus:ring-sky-500">
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="progress-display">
-                                    <h4 class="font-semibold text-gray-300">Overall Progress</h4>
-                                    <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-overall-${task.id}" class="progress-bar-fill progress-bar-overall" style="width: 0%"></div></div>
-                                    <div class="progress-stats">
-                                        <div class="stat-item text-center"><div class="label">Completed</div><div id="overall-completed-${task.id}" class="value completed">0</div></div>
-                                        <div class="stat-item text-center"><div class="label">Remaining</div><div id="overall-remaining-${task.id}" class="value">0</div></div>
-                                        <div class="stat-item text-center"><div class="label">Total</div><div id="overall-total-${task.id}" class="value">${task.totalGoal}</div></div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <span class="text-sm text-gray-400">Tracking Mode:</span>
+                                            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleEditMode('${task.id}')">
+                                                <span class="text-sm ${!isWeekly ? 'text-emerald-400 font-bold' : 'text-gray-500'}">Daily</span>
+                                                <div class="toggle-switch-sm ${isWeekly ? 'active' : ''}" id="edit-toggle-${task.id}">
+                                                    <div class="toggle-slider-sm"></div>
+                                                </div>
+                                                <span class="text-sm ${isWeekly ? 'text-emerald-400 font-bold' : 'text-gray-500'}">Weekly</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <button class="px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm transition-colors" onclick="cancelEdit('${task.id}')">Cancel</button>
+                                            <button class="px-3 py-1.5 rounded bg-rose-900/50 hover:bg-rose-700 text-rose-200 text-sm border border-rose-800 transition-colors" onclick="deleteTask('${task.id}')">Delete</button>
+                                            <button class="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors" onclick="saveEdit('${task.id}')">Save Changes</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1466,9 +1815,20 @@
                 });
             }
             tabPanel.appendChild(tasksContainer);
+            
+            // Add Task Form with Toggle
             tabPanel.insertAdjacentHTML('beforeend', `
                 <div class="add-task-form-container bg-gray-800/50 rounded-lg p-4 mt-6">
-                    <h3 class="text-lg font-semibold text-gray-300 mb-3">Add New Task</h3>
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-lg font-semibold text-gray-300">Add New Task</h3>
+                        <div class="flex items-center gap-2 cursor-pointer" id="new-task-mode-toggle">
+                            <span class="text-sm text-emerald-400 font-bold" id="new-mode-daily">Daily</span>
+                            <div class="toggle-switch-sm" id="new-task-toggle">
+                                <div class="toggle-slider-sm"></div>
+                            </div>
+                            <span class="text-sm text-gray-500" id="new-mode-weekly">Weekly</span>
+                        </div>
+                    </div>
                     <form id="add-task-form" class="flex flex-col sm:flex-row gap-3">
                         <input type="text" id="new-task-name" placeholder="Task Name" class="flex-grow bg-gray-900 border border-gray-600 rounded-md h-10 px-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" required>
                         <input type="number" id="new-task-goal" placeholder="Total Goal" class="w-full sm:w-32 bg-gray-900 border border-gray-600 rounded-md h-10 px-3 text-center focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" min="1" required>
@@ -1476,8 +1836,153 @@
                     </form>
                 </div>`);
             
-            updateUI(); // This will now update based on the active day
+            setupDragAndDrop(tasksContainer);
+            setupNewTaskToggle();
+            updateUI(); 
         }
+
+        // NEW: Drag and Drop Logic
+        function setupDragAndDrop(container) {
+            let draggedItem = null;
+
+            container.addEventListener('dragstart', e => {
+                draggedItem = e.target.closest('.task-item');
+                if (draggedItem) {
+                    draggedItem.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    // Hack to hide the ghost image if desired, or keep it
+                }
+            });
+
+            container.addEventListener('dragend', () => {
+                if (draggedItem) {
+                    draggedItem.classList.remove('dragging');
+                    draggedItem = null;
+                    
+                    // Save new order
+                    const newOrderIds = Array.from(container.querySelectorAll('.task-item')).map(item => item.dataset.id);
+                    const reorderedTasks = [];
+                    newOrderIds.forEach(id => {
+                        const task = tasks.find(t => t.id === id);
+                        if (task) reorderedTasks.push(task);
+                    });
+                    tasks = reorderedTasks;
+                    saveStateToLocal();
+                }
+            });
+
+            container.addEventListener('dragover', e => {
+                e.preventDefault();
+                const afterElement = getDragAfterElement(container, e.clientY);
+                const draggable = document.querySelector('.dragging');
+                if (draggable) {
+                    if (afterElement == null) {
+                        container.appendChild(draggable);
+                    } else {
+                        container.insertBefore(draggable, afterElement);
+                    }
+                }
+            });
+        }
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.task-item:not(.dragging)')];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        // NEW: Toggle Logic for New Task Form
+        let newTaskIsWeekly = false;
+        function setupNewTaskToggle() {
+            const toggleContainer = document.getElementById('new-task-mode-toggle');
+            const toggleSwitch = document.getElementById('new-task-toggle');
+            const dailyLabel = document.getElementById('new-mode-daily');
+            const weeklyLabel = document.getElementById('new-mode-weekly');
+
+            if (toggleContainer) {
+                toggleContainer.addEventListener('click', () => {
+                    newTaskIsWeekly = !newTaskIsWeekly;
+                    if (newTaskIsWeekly) {
+                        toggleSwitch.classList.add('active');
+                        weeklyLabel.classList.remove('text-gray-500');
+                        weeklyLabel.classList.add('text-emerald-400', 'font-bold');
+                        dailyLabel.classList.remove('text-emerald-400', 'font-bold');
+                        dailyLabel.classList.add('text-gray-500');
+                    } else {
+                        toggleSwitch.classList.remove('active');
+                        dailyLabel.classList.remove('text-gray-500');
+                        dailyLabel.classList.add('text-emerald-400', 'font-bold');
+                        weeklyLabel.classList.remove('text-emerald-400', 'font-bold');
+                        weeklyLabel.classList.add('text-gray-500');
+                    }
+                });
+            }
+        }
+
+        // NEW: Edit Mode Functions (Global scope for onclick handlers)
+        window.toggleEditMode = function(taskId) {
+            const toggle = document.getElementById(`edit-toggle-${taskId}`);
+            if (toggle) {
+                toggle.classList.toggle('active');
+                // Visual update only, logic handled in save
+                const isNowWeekly = toggle.classList.contains('active');
+                const container = toggle.parentElement;
+                const spans = container.querySelectorAll('span');
+                if (isNowWeekly) {
+                    spans[0].className = 'text-sm text-gray-500';
+                    spans[1].className = 'text-sm text-emerald-400 font-bold';
+                } else {
+                    spans[0].className = 'text-sm text-emerald-400 font-bold';
+                    spans[1].className = 'text-sm text-gray-500';
+                }
+            }
+        };
+
+        window.cancelEdit = function(taskId) {
+            document.getElementById(`view-mode-${taskId}`).classList.remove('hidden');
+            document.getElementById(`edit-mode-${taskId}`).classList.add('hidden');
+        };
+
+        window.saveEdit = function(taskId) {
+            const nameInput = document.getElementById(`edit-name-${taskId}`);
+            const goalInput = document.getElementById(`edit-goal-${taskId}`);
+            const toggle = document.getElementById(`edit-toggle-${taskId}`);
+            
+            if (nameInput && goalInput && toggle) {
+                const task = tasks.find(t => t.id === taskId);
+                if (task) {
+                    task.name = nameInput.value.trim();
+                    const newGoal = parseInt(goalInput.value, 10);
+                    if (!isNaN(newGoal) && newGoal > 0) task.totalGoal = newGoal;
+                    task.trackingMode = toggle.classList.contains('active') ? 'weekly' : 'daily';
+                    
+                    calculateAllDailyGoals();
+                    saveStateToLocal();
+                    renderDayContent(activeDay); // Re-render to show changes
+                }
+            }
+        };
+
+        window.deleteTask = function(taskId) {
+            if (confirm("Are you sure you want to delete this task?")) {
+                 tasks = tasks.filter(t => t.id !== taskId);
+                delete progressState[taskId];
+                Object.keys(dailyProgressState).forEach(dayKey => {
+                    delete dailyProgressState[dayKey][taskId];
+                });
+                delete dailyGoals[taskId];
+                saveStateToLocal();
+                renderDayContent(activeDay);
+            }
+        };
 
         function updateCountdown() {
             const timerElement = document.getElementById('countdown-timer');
@@ -1647,6 +2152,7 @@
                     document.querySelector('.day-tab.active').classList.remove('active');
                     tab.classList.add('active');
                     updateTabUnderline(tab);
+                    centerActiveTab(true); // Center the new active tab
                     
                     document.querySelector('.tab-panel.active').classList.remove('active');
                     document.getElementById(`day-panel-${day}`).classList.add('active');
@@ -1661,7 +2167,10 @@
                 const task = tasks.find(t => t.id === taskId);
                 if (!task) return;
 
-                if (change) {
+                if (controlBtn.classList.contains('edit-btn')) {
+                    document.getElementById(`view-mode-${taskId}`).classList.add('hidden');
+                    document.getElementById(`edit-mode-${taskId}`).classList.remove('hidden');
+                } else if (change) {
                     const changeAmount = parseInt(change, 10);
                     const totalGoal = Number(task.totalGoal);
                     const currentOverallCompleted = progressState[taskId] || 0;
@@ -1679,15 +2188,6 @@
                             removeFromDailyProgress(taskId, Math.abs(changeAmount));
                         }
                     }
-                } else if (controlBtn.classList.contains('remove-btn')) {
-                    tasks = tasks.filter(t => t.id !== taskId);
-                    delete progressState[taskId];
-                    // Remove task from all daily progress logs
-                    Object.keys(dailyProgressState).forEach(dayKey => {
-                        delete dailyProgressState[dayKey][taskId];
-                    });
-                    delete dailyGoals[taskId];
-                    render(); 
                 }
                 saveStateToLocal(); 
                 updateUI();
@@ -1701,7 +2201,12 @@
                     const name = nameInput.value.trim();
                     const goal = parseInt(goalInput.value, 10);
                     if (name && !isNaN(goal) && goal > 0) {
-                        const newTask = { id: `task-${Date.now()}`, name, totalGoal: goal };
+                        const newTask = { 
+                            id: `task-${Date.now()}`, 
+                            name, 
+                            totalGoal: goal,
+                            trackingMode: newTaskIsWeekly ? 'weekly' : 'daily'
+                        };
                         tasks.push(newTask);
                         progressState[newTask.id] = 0;
                         calculateAllDailyGoals();
@@ -1764,6 +2269,7 @@
                             newTab.classList.add('active');
                             newPanel.classList.add('active');
                             updateTabUnderline(newTab);
+                            centerActiveTab(true); // Center the new active tab
                             
                             activeDay = newActiveDay;
                             renderDayContent(activeDay);

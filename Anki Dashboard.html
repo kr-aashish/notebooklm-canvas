@@ -2725,13 +2725,16 @@
             document.getElementById('sync-container').style.display = 'flex';
             document.getElementById('reset-container').style.display = 'flex';
             
-            isInitialLoad = false;
-            
             document.getElementById('start-date-input').value = formatDateForInput(startDate);
             document.getElementById('target-date-input').value = formatDateForInput(targetDate);
 
             if (countdownInterval) clearInterval(countdownInterval);
             countdownInterval = setInterval(updateUI, 1000);
+            
+            // Set after render() to ensure initial tab navigation works
+            setTimeout(() => {
+                isInitialLoad = false;
+            }, 200);
             const { title, subtitle } = getSavedTexts();
             if (!titleElement.hasAttribute('contenteditable')) {
                 typeWriter(titleElement, title, () => {

@@ -1144,21 +1144,6 @@
                 </svg>
                 Manual Pull
             </button>
-            <div class="flex items-center gap-2 bg-green-800/20 border border-green-600/30 text-green-400 font-semibold py-2 px-4 rounded-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Auto-Sync Enabled
-            </div>
-            <button id="push-button" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
-                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                </svg>
-                Manual Push
-            </button>
-        </div>
-        
-        <div id="reset-container" class="mt-6 flex justify-center items-center" style="display: none;">
             <button id="reset-progress-button" class="group relative flex items-center gap-2 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-semibold py-2 px-4 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl">
                 <div class="absolute inset-0 bg-gradient-to-r from-rose-400 to-pink-400 rounded-lg opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform group-hover:rotate-180 duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -1167,7 +1152,15 @@
                 <span class="relative z-10 tracking-wide">Reset All Progress</span>
                 <div class="absolute inset-0 rounded-xl ring-2 ring-rose-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
             </button>
+            <button id="push-button" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                </svg>
+                Manual Push
+            </button>
         </div>
+        
+
         <div id="sync-status" class="mt-2 text-xs text-gray-600 h-4"></div>
         
     </footer>
@@ -1195,6 +1188,7 @@
         let isDayWiseSplitEnabled = true;
         let isRearrangeMode = false;
         let isWeeklyView = false; // Default to Daily view
+        let isAutoSyncEnabled = true; // Default to Auto Sync enabled
 
         const mainContentContainer = document.getElementById('main-content');
         const titleElement = document.querySelector('header h1');
@@ -1426,7 +1420,7 @@
         }
 
         async function debouncedAutoSync() {
-            if (isAutoSyncing || isInitialLoad) return;
+            if (isAutoSyncing || isInitialLoad || !isAutoSyncEnabled) return;
             
             if (autoSyncTimeout) {
                 clearTimeout(autoSyncTimeout);
@@ -1509,6 +1503,9 @@
 
             const savedIsDayWiseSplitEnabled = localStorage.getItem('studyIsDayWiseSplitEnabled');
             if (savedIsDayWiseSplitEnabled !== null) isDayWiseSplitEnabled = savedIsDayWiseSplitEnabled === 'true';
+            
+            const savedIsAutoSyncEnabled = localStorage.getItem('studyIsAutoSyncEnabled');
+            if (savedIsAutoSyncEnabled !== null) isAutoSyncEnabled = savedIsAutoSyncEnabled === 'true';
             
             // This logic is now simplified. We no longer reset daily progress,
             // as it's stored per day in the new structure.
@@ -1777,6 +1774,12 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-4">
+                        <span class="toggle-label" id="auto-sync-toggle-label">${isAutoSyncEnabled ? "Auto Sync: On" : "Auto Sync: Off"}</span>
+                        <div class="toggle-switch ${isAutoSyncEnabled ? 'active' : ''}" id="auto-sync-toggle">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
                         <span class="toggle-label">Day wise split</span>
                         <div class="toggle-switch ${isDayWiseSplitEnabled ? 'active' : ''}" id="day-wise-toggle">
                             <div class="toggle-slider"></div>
@@ -1839,6 +1842,17 @@
                     if (label) label.textContent = isWeeklyView ? "View: Weekly" : "View: Daily";
                     renderDayContent(activeDay);
                     saveStateToLocal();
+                });
+            }
+
+            const autoSyncToggle = document.getElementById('auto-sync-toggle');
+            if (autoSyncToggle) {
+                autoSyncToggle.addEventListener('click', () => {
+                    isAutoSyncEnabled = !isAutoSyncEnabled;
+                    autoSyncToggle.classList.toggle('active');
+                    const label = document.getElementById('auto-sync-toggle-label');
+                    if (label) label.textContent = isAutoSyncEnabled ? "Auto Sync: On" : "Auto Sync: Off";
+                    localStorage.setItem('studyIsAutoSyncEnabled', isAutoSyncEnabled.toString());
                 });
             }
 
@@ -2723,7 +2737,6 @@
             render();
             attachEventListeners();
             document.getElementById('sync-container').style.display = 'flex';
-            document.getElementById('reset-container').style.display = 'flex';
             
             document.getElementById('start-date-input').value = formatDateForInput(startDate);
             document.getElementById('target-date-input').value = formatDateForInput(targetDate);

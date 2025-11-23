@@ -1133,7 +1133,32 @@
                 loadStateFromLocal();
             }
             // Ensure dates are loaded from localStorage after cloud pull fails
-            loadStateFromLocal();
+            // loadStateFromLocal(); // This was redundant if handlePullFromCloud fails, but if it succeeds, we might need to load other things? 
+            // Actually handlePullFromCloud updates memory variables directly.
+            // But if it FAILS, we load from local.
+            
+            // If handlePullFromCloud succeeded, it updated the variables.
+            // If it failed, we called loadStateFromLocal().
+            // So we are good.
+            
+            // However, we need to make sure UI reflects the loaded state (toggles) if we loaded from LOCAL
+            if (!success) {
+                 // Update UI for toggles based on local state
+                const viewToggle = document.getElementById('view-toggle');
+                const viewLabel = document.getElementById('view-toggle-label');
+                if (viewToggle) {
+                    if (isWeeklyView) viewToggle.classList.add('active');
+                    else viewToggle.classList.remove('active');
+                }
+                if (viewLabel) viewLabel.textContent = isWeeklyView ? "View: Weekly" : "View: Daily";
+
+                const dayWiseToggle = document.getElementById('day-wise-toggle');
+                if (dayWiseToggle) {
+                    if (isDayWiseSplitEnabled) dayWiseToggle.classList.add('active');
+                    else dayWiseToggle.classList.remove('active');
+                }
+            }
+
             initializeAppUI();
         }
 
@@ -1163,7 +1188,45 @@
                 localStorage.setItem('studyTrackerTitle', record.studyTrackerTitle || 'Study Progress Tracker');
                 localStorage.setItem('studyTrackerSubtitle', record.studyTrackerSubtitle || 'Your customizable study plan.');
                 
-                loadStateFromLocal();
+                // Update in-memory variables directly from record
+                startDate = new Date(record.studyStartDate || new Date());
+                targetDate = new Date(record.studyTargetDate || new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000));
+                tasks = record.studyTasks || [];
+                progressState = record.studyProgressState || {};
+                dailyProgressState = record.studyDailyProgressState || {};
+                
+                if (record.studyTrackerTitle) {
+                    titleElement.textContent = record.studyTrackerTitle;
+                }
+                if (record.studyTrackerSubtitle) {
+                    subtitleElement.textContent = record.studyTrackerSubtitle;
+                }
+                
+                if (record.studyIsWeeklyView !== undefined) {
+                    isWeeklyView = record.studyIsWeeklyView;
+                    localStorage.setItem('studyIsWeeklyView', isWeeklyView.toString());
+                    // Update UI
+                    const viewToggle = document.getElementById('view-toggle');
+                    const viewLabel = document.getElementById('view-toggle-label');
+                    if (viewToggle) {
+                        if (isWeeklyView) viewToggle.classList.add('active');
+                        else viewToggle.classList.remove('active');
+                    }
+                    if (viewLabel) viewLabel.textContent = isWeeklyView ? "View: Weekly" : "View: Daily";
+                }
+
+                if (record.studyIsDayWiseSplitEnabled !== undefined) {
+                    isDayWiseSplitEnabled = record.studyIsDayWiseSplitEnabled;
+                    localStorage.setItem('studyIsDayWiseSplitEnabled', isDayWiseSplitEnabled.toString());
+                    // Update UI
+                    const dayWiseToggle = document.getElementById('day-wise-toggle');
+                    if (dayWiseToggle) {
+                        if (isDayWiseSplitEnabled) dayWiseToggle.classList.add('active');
+                        else dayWiseToggle.classList.remove('active');
+                    }
+                }
+
+                syncAndValidateState();
                 updateSyncStatus('Pull successful ✓', '#10b981');
 
                 if (withConfirmation) {
@@ -1239,7 +1302,9 @@
                 studyProgressState: JSON.parse(localStorage.getItem('studyProgressState') || '{}'),
                 studyDailyProgressState: JSON.parse(localStorage.getItem('studyDailyProgressState') || '{}'),
                 studyTrackerTitle: localStorage.getItem('studyTrackerTitle'),
-                studyTrackerSubtitle: localStorage.getItem('studyTrackerSubtitle')
+                studyTrackerSubtitle: localStorage.getItem('studyTrackerSubtitle'),
+                studyIsWeeklyView: isWeeklyView,
+                studyIsDayWiseSplitEnabled: isDayWiseSplitEnabled
             };
 
             const pushButton = document.getElementById('push-button');
@@ -1298,7 +1363,9 @@
                         studyProgressState: JSON.parse(localStorage.getItem('studyProgressState') || '{}'),
                         studyDailyProgressState: JSON.parse(localStorage.getItem('studyDailyProgressState') || '{}'),
                         studyTrackerTitle: localStorage.getItem('studyTrackerTitle'),
-                        studyTrackerSubtitle: localStorage.getItem('studyTrackerSubtitle')
+                        studyTrackerSubtitle: localStorage.getItem('studyTrackerSubtitle'),
+                        studyIsWeeklyView: isWeeklyView,
+                        studyIsDayWiseSplitEnabled: isDayWiseSplitEnabled
                     };
 
                     const response = await fetch(UPSERT_URL, {
@@ -1328,6 +1395,8 @@
             localStorage.setItem('studyTasks', JSON.stringify(tasks));
             localStorage.setItem('studyProgressState', JSON.stringify(progressState));
             localStorage.setItem('studyDailyProgressState', JSON.stringify(dailyProgressState));
+            localStorage.setItem('studyIsWeeklyView', isWeeklyView.toString());
+            localStorage.setItem('studyIsDayWiseSplitEnabled', isDayWiseSplitEnabled.toString());
             
             if (!isInitialLoad) {
                 debouncedAutoSync();
@@ -1353,6 +1422,12 @@
             tasks = JSON.parse(localStorage.getItem('studyTasks') || '[]');
             progressState = JSON.parse(localStorage.getItem('studyProgressState') || '{}');
             dailyProgressState = JSON.parse(localStorage.getItem('studyDailyProgressState') || '{}');
+            
+            const savedIsWeeklyView = localStorage.getItem('studyIsWeeklyView');
+            if (savedIsWeeklyView !== null) isWeeklyView = savedIsWeeklyView === 'true';
+
+            const savedIsDayWiseSplitEnabled = localStorage.getItem('studyIsDayWiseSplitEnabled');
+            if (savedIsDayWiseSplitEnabled !== null) isDayWiseSplitEnabled = savedIsDayWiseSplitEnabled === 'true';
             
             // This logic is now simplified. We no longer reset daily progress,
             // as it's stored per day in the new structure.
@@ -1603,8 +1678,8 @@
                 </div>
                 <div class="toggle-container">
                     <div class="flex items-center gap-4">
-                        <span class="toggle-label" id="view-toggle-label">View: Daily</span>
-                        <div class="toggle-switch" id="view-toggle">
+                        <span class="toggle-label" id="view-toggle-label">${isWeeklyView ? "View: Weekly" : "View: Daily"}</span>
+                        <div class="toggle-switch ${isWeeklyView ? 'active' : ''}" id="view-toggle">
                             <div class="toggle-slider"></div>
                         </div>
                     </div>
@@ -1670,6 +1745,7 @@
                     const label = document.getElementById('view-toggle-label');
                     if (label) label.textContent = isWeeklyView ? "View: Weekly" : "View: Daily";
                     renderDayContent(activeDay);
+                    saveStateToLocal();
                 });
             }
 
@@ -1680,9 +1756,9 @@
                     
                     // Update toggle visual state
                     if (isDayWiseSplitEnabled) {
-                        toggle.classList.add('active');
+                        dayWiseToggle.classList.add('active');
                     } else {
-                        toggle.classList.remove('active');
+                        dayWiseToggle.classList.remove('active');
                     }
                     
                     // Update tabs visibility
@@ -1735,6 +1811,7 @@
                     
                     // Save state to localStorage
                     localStorage.setItem('isDayWiseSplitEnabled', isDayWiseSplitEnabled.toString());
+                    saveStateToLocal();
                 });
             }
         }

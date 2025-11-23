@@ -666,6 +666,29 @@
             padding: 0.5rem;
             border-radius: 0.375rem;
             transition: all 0.2s;
+            display: none; /* Hidden by default */
+        }
+        .rearrange-mode .drag-handle {
+            display: block; /* Show in rearrange mode */
+            animation: fadeIn 0.3s ease-out;
+        }
+        .rearrange-mode .task-card {
+            transform: none !important;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1) !important;
+        }
+        .rearrange-mode .task-item {
+            cursor: move;
+        }
+        
+        /* Rearrange Button Animation */
+        .rearrange-btn {
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .rearrange-btn.active {
+            background: #f59e0b; /* Amber-500 */
+            color: #fff;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+            transform: scale(1.05);
         }
         .drag-handle:hover {
             background: rgba(255, 255, 255, 0.1);
@@ -1024,7 +1047,7 @@
                     <p class="text-sm text-gray-400">View the project timeline and epic tracking on Jira.</p>
                 </div>
             </div>
-            <a href="https://aashish-kumar.atlassian.net/jira/software/projects/OBS/boards/1/timeline" target="_blank" rel="noopener noreferrer" class="flex-shrink-0 w-full sm:w-auto flex items-center justify-center gap-2 button-shine text-white font-semibold py-2 px-5 rounded-lg shadow-lg whitespace-nowrap">
+            <a href="https://docs.google.com/spreadsheets/d/1MewOR5My9F6VqA2Wr9GG6g7rkDCS5fzyLpULI0Rg1LY/edit?gid=781119765#gid=781119765" target="_blank" rel="noopener noreferrer" class="flex-shrink-0 w-full sm:w-auto flex items-center justify-center gap-2 button-shine text-white font-semibold py-2 px-5 rounded-lg shadow-lg whitespace-nowrap">
                 View Timeline
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
@@ -1089,6 +1112,7 @@
         let isInitialLoad = true;
         let activeDay = 1;
         let isDayWiseSplitEnabled = true;
+        let isRearrangeMode = false;
 
         const mainContentContainer = document.getElementById('main-content');
         const titleElement = document.querySelector('header h1');
@@ -1555,11 +1579,17 @@
                             <label for="start-date-input">Start Date</label>
                             <input type="datetime-local" id="start-date-input">
                         </div>
-                        <div id="current-day-container">
-                            <div class="circular-progress">
+                        <div id="current-day-container" class="flex gap-6">
+                            <div class="circular-progress" id="day-progress-circle">
                                 <div class="day-number-container">
                                     <div class="day-label">Day</div>
                                     <div class="day-number" id="current-day-number">1</div>
+                                </div>
+                            </div>
+                            <div class="circular-progress" id="week-progress-circle">
+                                <div class="day-number-container">
+                                    <div class="day-label">Week</div>
+                                    <div class="day-number" id="current-week-number">1</div>
                                 </div>
                             </div>
                         </div>
@@ -1571,10 +1601,18 @@
                     <div id="countdown-timer"></div>
                 </div>
                 <div class="toggle-container">
-                    <span class="toggle-label">Day wise split</span>
-                    <div class="toggle-switch ${isDayWiseSplitEnabled ? 'active' : ''}" id="day-wise-toggle">
-                        <div class="toggle-slider"></div>
+                    <div class="flex items-center gap-4">
+                        <span class="toggle-label">Day wise split</span>
+                        <div class="toggle-switch ${isDayWiseSplitEnabled ? 'active' : ''}" id="day-wise-toggle">
+                            <div class="toggle-slider"></div>
+                        </div>
                     </div>
+                    <button id="rearrange-toggle-btn" class="rearrange-btn flex items-center gap-2 bg-gray-700 text-gray-300 px-4 py-2 rounded-full font-semibold border border-gray-600 hover:bg-gray-600 hover:text-white" onclick="toggleRearrangeMode()">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                        </svg>
+                        Rearrange
+                    </button>
                 </div>
             `;
             
@@ -1712,8 +1750,61 @@
                     const weeklyGoal = Math.ceil(Number(task.totalGoal) / weeks);
                     const dailyGoal = dailyGoals[task.id] || 0;
                     
-                    const goalLabel = isWeekly ? 'Weekly Goal' : 'Daily Goal';
-                    const goalValue = isWeekly ? weeklyGoal : dailyGoal;
+                    // Weekly Logic
+                    let weeklyProgressText = '';
+                    let weeklyProgressValue = 0;
+                    let progressThisWeek = 0;
+                    const currentWeek = Math.ceil(getCurrentDay() / 7);
+                    
+                    if (isWeekly) {
+                        const daysLeftInWeek = 7 - ((getCurrentDay() - 1) % 7);
+                        
+                        // Calculate progress for this week
+                        const startDayOfCurrentWeek = (currentWeek - 1) * 7 + 1;
+                        const endDayOfCurrentWeek = currentWeek * 7;
+                        
+                        for (let d = startDayOfCurrentWeek; d <= endDayOfCurrentWeek; d++) {
+                            const dKey = `day-${d}`;
+                            if (dailyProgressState[dKey]) {
+                                progressThisWeek += (dailyProgressState[dKey][task.id] || 0);
+                            }
+                        }
+                        weeklyProgressValue = progressThisWeek;
+                        weeklyProgressText = `
+                            <div class="mt-2 p-2 bg-gray-900/50 rounded border border-gray-700 flex justify-between items-center text-xs">
+                                <span class="text-emerald-400 font-medium">Week ${currentWeek} Progress: ${progressThisWeek} / ${weeklyGoal}</span>
+                                <span class="text-gray-400">${daysLeftInWeek} days left in week</span>
+                            </div>
+                        `;
+                    }
+
+                    // Progress Section HTML
+                    let progressSectionHTML = '';
+                    if (isWeekly) {
+                        progressSectionHTML = `
+                            <div class="progress-display">
+                                <h4 class="font-semibold text-gray-300">Week ${currentWeek} Progress</h4>
+                                <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-weekly-${task.id}" class="progress-bar-fill progress-bar-weekly" style="width: 0%"></div></div>
+                                <div class="progress-stats">
+                                    <div class="stat-item text-center"><div class="label">Completed</div><div id="weekly-completed-${task.id}" class="value completed">0</div></div>
+                                    <div class="stat-item text-center"><div class="label">Remaining</div><div id="weekly-remaining-${task.id}" class="value">0</div></div>
+                                    <div class="stat-item text-center"><div class="label">Goal</div><div id="weekly-total-${task.id}" class="value">${weeklyGoal}</div></div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        progressSectionHTML = `
+                            <div class="progress-display">
+                                <h4 class="font-semibold text-gray-300">Day ${dayIndex} Progress</h4>
+                                <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-daily-${task.id}" class="progress-bar-fill progress-bar-daily" style="width: 0%"></div></div>
+                                <div class="progress-stats">
+                                    <div class="stat-item text-center"><div class="label">Completed</div><div id="daily-completed-${task.id}" class="value completed">0</div></div>
+                                    <div class="stat-item text-center"><div class="label">Remaining</div><div id="daily-remaining-${task.id}" class="value">0</div></div>
+                                    <div class="stat-item text-center"><div class="label">Goal</div><div id="daily-total-${task.id}" class="value">0</div></div>
+                                </div>
+                            </div>
+                        `;
+                    }
 
                     taskItem.innerHTML = `
                         <div class="task-card bg-gray-800 rounded-lg shadow-md p-4 flex flex-col gap-4 group">
@@ -1732,6 +1823,7 @@
                                                 <span class="text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-400 border border-gray-600">${isWeekly ? 'Weekly' : 'Daily'}</span>
                                             </div>
                                             <div class="text-xs text-gray-500 mt-1">Target: <span class="text-emerald-400 font-medium">${goalValue}</span> / ${isWeekly ? 'week' : 'day'}</div>
+                                            ${isWeekly ? '' : '' /* Removed extra weekly text since we have the main block now, or keep it as summary? User said "show weekly progress INSTEAD of daily". So I will remove the extra summary text I added in previous step to avoid redundancy, OR keep it if it adds value. The user said "show weekly progress instead of daily progress", which implies the main block. I'll remove the small summary text I added before to be cleaner. */}
                                         </div>
                                         <button class="control-btn edit-btn w-8 h-8 rounded-full bg-gray-700 hover:bg-sky-600 transition-colors flex items-center justify-center text-gray-300 hover:text-white" data-task="${task.id}" title="Edit Task">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1755,15 +1847,7 @@
                                 </div>
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                                    <div class="progress-display">
-                                        <h4 class="font-semibold text-gray-300">Day ${dayIndex} Progress</h4>
-                                        <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-daily-${task.id}" class="progress-bar-fill progress-bar-daily" style="width: 0%"></div></div>
-                                        <div class="progress-stats">
-                                            <div class="stat-item text-center"><div class="label">Completed</div><div id="daily-completed-${task.id}" class="value completed">0</div></div>
-                                            <div class="stat-item text-center"><div class="label">Remaining</div><div id="daily-remaining-${task.id}" class="value">0</div></div>
-                                            <div class="stat-item text-center"><div class="label">Goal</div><div id="daily-total-${task.id}" class="value">0</div></div>
-                                        </div>
-                                    </div>
+                                    ${progressSectionHTML}
                                     <div class="progress-display">
                                         <h4 class="font-semibold text-gray-300">Overall Progress</h4>
                                         <div class="w-full bg-gray-900 rounded-full h-2.5 mt-2"><div id="task-progress-bar-overall-${task.id}" class="progress-bar-fill progress-bar-overall" style="width: 0%"></div></div>
@@ -1774,6 +1858,7 @@
                                         </div>
                                     </div>
                                 </div>
+                                ${isWeekly ? `<div class="text-xs text-gray-500 text-right mt-1">${daysLeftInWeek} days left in week</div>` : ''}
                             </div>
 
                             <!-- Edit View (Hidden by default) -->
@@ -1984,6 +2069,32 @@
             }
         };
 
+        window.toggleRearrangeMode = function() {
+            isRearrangeMode = !isRearrangeMode;
+            const container = document.getElementById('main-content');
+            const btn = document.getElementById('rearrange-toggle-btn');
+            
+            if (isRearrangeMode) {
+                container.classList.add('rearrange-mode');
+                btn.classList.add('active');
+                btn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Done
+                `;
+            } else {
+                container.classList.remove('rearrange-mode');
+                btn.classList.remove('active');
+                btn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                    </svg>
+                    Rearrange
+                `;
+            }
+        };
+
         function updateCountdown() {
             const timerElement = document.getElementById('countdown-timer');
             if (!timerElement) return;
@@ -2016,74 +2127,106 @@
             const timeSinceStart = now.getTime() - startDate.getTime();
             if (timeSinceStart >= 0) {
                 const dayMillis = 1000 * 60 * 60 * 24;
+                const weekMillis = dayMillis * 7;
+                
+                // Day Progress
                 const progressOfDay = (timeSinceStart % dayMillis) / dayMillis;
-                const angle = progressOfDay * 360;
-
-                const circularProgress = document.querySelector('.circular-progress');
+                const dayAngle = progressOfDay * 360;
+                const dayCircle = document.getElementById('day-progress-circle');
                 const dayNumberEl = document.getElementById('current-day-number');
 
-                if (circularProgress) {
-                    circularProgress.style.background = `conic-gradient(#818cf8 ${angle}deg, #374151 ${angle}deg)`;
-                }
-                if (dayNumberEl) {
-                    dayNumberEl.textContent = currentDayNumber;
-                }
+                if (dayCircle) dayCircle.style.background = `conic-gradient(#818cf8 ${dayAngle}deg, #374151 ${dayAngle}deg)`;
+                if (dayNumberEl) dayNumberEl.textContent = currentDayNumber;
+
+                // Week Progress
+                const progressOfWeek = (timeSinceStart % weekMillis) / weekMillis;
+                const weekAngle = progressOfWeek * 360;
+                const weekCircle = document.getElementById('week-progress-circle');
+                const weekNumberEl = document.getElementById('current-week-number');
+                const currentWeekNumber = Math.ceil(currentDayNumber / 7);
+
+                if (weekCircle) weekCircle.style.background = `conic-gradient(#34d399 ${weekAngle}deg, #374151 ${weekAngle}deg)`; // Emerald for week
+                if (weekNumberEl) weekNumberEl.textContent = currentWeekNumber;
             }
 
             const totalDays = getTotalDays();
-            
-            tasks.forEach(task => {
-                const totalGoal = Number(task.totalGoal);
-                const totalCompleted = Number(progressState[task.id] || 0);
-                const overallPercent = totalGoal > 0 ? (totalCompleted / totalGoal) * 100 : 0;
-                const overallRemaining = totalGoal - totalCompleted;
-                
-                // Update all day panels for consistent overall progress
-                for (let dayIndex = 1; dayIndex <= totalDays; dayIndex++) {
-                    const panel = document.getElementById(`day-panel-${dayIndex}`);
-                    if (!panel) continue;
-                    
-                    // Get daily progress for this specific day
-                    const dayKey = `day-${dayIndex}`;
-                    if (!dailyProgressState[dayKey]) dailyProgressState[dayKey] = {};
-                    const dayCompleted = Number(dailyProgressState[dayKey][task.id] || 0);
-                    
-                    const dailyGoal = dailyGoals[task.id] || 0;
-                    const dailyRemaining = Math.max(0, dailyGoal - dayCompleted);
-                    const dailyPercent = dailyGoal > 0 ? (dayCompleted / dailyGoal) * 100 : 0;
-                    
-                    // Update input fields only for active panel
-                    if (dayIndex === activeDay) {
-                        const remainingInput = panel.querySelector(`.task-input-remaining[data-task="${task.id}"]`);
-                        const totalInput = panel.querySelector(`.task-input-total[data-task="${task.id}"]`);
-                        if (remainingInput) remainingInput.value = overallRemaining;
-                        if (totalInput) totalInput.value = totalGoal;
-                    }
-                    
-                    // Update progress bars - these should be consistent across all panels
-                    const dailyBar = panel.querySelector(`#task-progress-bar-daily-${task.id}`);
-                    const overallBar = panel.querySelector(`#task-progress-bar-overall-${task.id}`);
-                    if (dailyBar) dailyBar.style.width = `${Math.min(100, dailyPercent)}%`;
-                    if (overallBar) overallBar.style.width = `${Math.min(100, overallPercent)}%`;
-
-                    // Update text content
-                    const dailyCompletedEl = panel.querySelector(`#daily-completed-${task.id}`);
-                    const dailyRemainingEl = panel.querySelector(`#daily-remaining-${task.id}`);
-                    const dailyTotalEl = panel.querySelector(`#daily-total-${task.id}`);
-                    const overallCompletedEl = panel.querySelector(`#overall-completed-${task.id}`);
-                    const overallRemainingEl = panel.querySelector(`#overall-remaining-${task.id}`);
-                    const overallTotalEl = panel.querySelector(`#overall-total-${task.id}`);
-                    
-                    if (dailyCompletedEl) dailyCompletedEl.textContent = dayCompleted;
-                    if (dailyRemainingEl) dailyRemainingEl.textContent = dailyRemaining;
-                    if (dailyTotalEl) dailyTotalEl.textContent = dailyGoal;
-                    if (overallCompletedEl) overallCompletedEl.textContent = totalCompleted;
-                    if (overallRemainingEl) overallRemainingEl.textContent = overallRemaining;
-                    if (overallTotalEl) overallTotalEl.textContent = totalGoal;
-                }
-            });
-        }
+    
+    tasks.forEach(task => {
+        const isWeekly = task.trackingMode === 'weekly';
+        const totalDays = getTotalDays();
+        const weeks = Math.max(1, totalDays / 7);
+        const weeklyGoal = Math.ceil(Number(task.totalGoal) / weeks);
+        const dailyGoal = dailyGoals[task.id] || 0;
         
+        const currentDayKey = `day-${activeDay}`;
+        const dailyCompleted = (dailyProgressState[currentDayKey] && dailyProgressState[currentDayKey][task.id]) || 0;
+        
+        // Update Inputs
+        const remainingInput = document.querySelector(`.task-input-remaining[data-task="${task.id}"]`);
+        if (remainingInput) {
+            remainingInput.value = task.totalGoal - (progressState[task.id] || 0);
+        }
+
+        // Update Overall Progress
+        const overallCompleted = progressState[task.id] || 0;
+        const overallTotal = Number(task.totalGoal);
+        const overallPercent = Math.min(100, Math.max(0, (overallCompleted / overallTotal) * 100));
+        
+        const overallBar = document.getElementById(`task-progress-bar-overall-${task.id}`);
+        if (overallBar) overallBar.style.width = `${overallPercent}%`;
+        
+        const overallCompletedEl = document.getElementById(`overall-completed-${task.id}`);
+        if (overallCompletedEl) overallCompletedEl.textContent = overallCompleted;
+        
+        const overallRemainingEl = document.getElementById(`overall-remaining-${task.id}`);
+        if (overallRemainingEl) overallRemainingEl.textContent = overallTotal - overallCompleted;
+
+        // Update Daily OR Weekly Progress
+        if (isWeekly) {
+            const currentWeek = Math.ceil(activeDay / 7);
+            const startDayOfCurrentWeek = (currentWeek - 1) * 7 + 1;
+            const endDayOfCurrentWeek = currentWeek * 7;
+            let weeklyCompleted = 0;
+            
+            for (let d = startDayOfCurrentWeek; d <= endDayOfCurrentWeek; d++) {
+                const dKey = `day-${d}`;
+                if (dailyProgressState[dKey]) {
+                    weeklyCompleted += (dailyProgressState[dKey][task.id] || 0);
+                }
+            }
+            
+            const weeklyPercent = Math.min(100, Math.max(0, (weeklyCompleted / weeklyGoal) * 100));
+            
+            const weeklyBar = document.getElementById(`task-progress-bar-weekly-${task.id}`);
+            if (weeklyBar) weeklyBar.style.width = `${weeklyPercent}%`;
+            
+            const weeklyCompletedEl = document.getElementById(`weekly-completed-${task.id}`);
+            if (weeklyCompletedEl) weeklyCompletedEl.textContent = weeklyCompleted;
+            
+            const weeklyRemainingEl = document.getElementById(`weekly-remaining-${task.id}`);
+            if (weeklyRemainingEl) weeklyRemainingEl.textContent = Math.max(0, weeklyGoal - weeklyCompleted);
+            
+            const weeklyTotalEl = document.getElementById(`weekly-total-${task.id}`);
+            if (weeklyTotalEl) weeklyTotalEl.textContent = weeklyGoal;
+            
+        } else {
+            // Daily Progress
+            const dailyPercent = Math.min(100, Math.max(0, (dailyCompleted / dailyGoal) * 100));
+            
+            const dailyBar = document.getElementById(`task-progress-bar-daily-${task.id}`);
+            if (dailyBar) dailyBar.style.width = `${dailyPercent}%`;
+            
+            const dailyCompletedEl = document.getElementById(`daily-completed-${task.id}`);
+            if (dailyCompletedEl) dailyCompletedEl.textContent = dailyCompleted;
+            
+            const dailyRemainingEl = document.getElementById(`daily-remaining-${task.id}`);
+            if (dailyRemainingEl) dailyRemainingEl.textContent = Math.max(0, dailyGoal - dailyCompleted);
+            
+            const dailyTotalEl = document.getElementById(`daily-total-${task.id}`);
+            if (dailyTotalEl) dailyTotalEl.textContent = dailyGoal;
+        }
+    });
+}    
         function attachEventListeners() {
             // Use event delegation on the main container to handle events for dynamic content
             mainContentContainer.addEventListener('input', e => {

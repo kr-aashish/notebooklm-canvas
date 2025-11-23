@@ -1113,6 +1113,7 @@
         let activeDay = 1;
         let isDayWiseSplitEnabled = true;
         let isRearrangeMode = false;
+        let isWeeklyView = false; // Default to Daily view
 
         const mainContentContainer = document.getElementById('main-content');
         const titleElement = document.querySelector('header h1');
@@ -1602,6 +1603,12 @@
                 </div>
                 <div class="toggle-container">
                     <div class="flex items-center gap-4">
+                        <span class="toggle-label" id="view-toggle-label">View: Daily</span>
+                        <div class="toggle-switch" id="view-toggle">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
                         <span class="toggle-label">Day wise split</span>
                         <div class="toggle-switch ${isDayWiseSplitEnabled ? 'active' : ''}" id="day-wise-toggle">
                             <div class="toggle-slider"></div>
@@ -1655,9 +1662,20 @@
 
         // NEW: Setup toggle event listener
         function setupToggleEventListener() {
-            const toggle = document.getElementById('day-wise-toggle');
-            if (toggle) {
-                toggle.addEventListener('click', () => {
+            const viewToggle = document.getElementById('view-toggle');
+            if (viewToggle) {
+                viewToggle.addEventListener('click', () => {
+                    isWeeklyView = !isWeeklyView;
+                    viewToggle.classList.toggle('active');
+                    const label = document.getElementById('view-toggle-label');
+                    if (label) label.textContent = isWeeklyView ? "View: Weekly" : "View: Daily";
+                    renderDayContent(activeDay);
+                });
+            }
+
+            const dayWiseToggle = document.getElementById('day-wise-toggle');
+            if (dayWiseToggle) {
+                dayWiseToggle.addEventListener('click', () => {
                     isDayWiseSplitEnabled = !isDayWiseSplitEnabled;
                     
                     // Update toggle visual state
@@ -1733,10 +1751,14 @@
             tasksContainer.id = 'tasks-container';
             tasksContainer.className = 'space-y-4';
             
-            if (tasks.length === 0) {
-                tasksContainer.innerHTML = `<div class="text-center text-gray-500 py-10">No tasks yet. Add one below to get started!</div>`;
+            // Filter tasks based on view mode
+            const visibleTasks = tasks.filter(task => isWeeklyView ? task.trackingMode === 'weekly' : task.trackingMode === 'daily');
+            
+            if (visibleTasks.length === 0) {
+                const modeText = isWeeklyView ? 'Weekly' : 'Daily';
+                tasksContainer.innerHTML = `<div class="text-center text-gray-500 py-10">No ${modeText} tasks yet. Add one below!</div>`;
             } else {
-                tasks.forEach((task, taskIndex) => {
+                visibleTasks.forEach((task, taskIndex) => {
                     const taskItem = document.createElement('div');
                     taskItem.className = 'task-item'; 
                     taskItem.draggable = true; // Enable Drag

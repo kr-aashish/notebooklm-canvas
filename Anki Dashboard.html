@@ -2133,14 +2133,26 @@
                     draggedItem = null;
                     
                     // Save new order
-                    const newOrderIds = Array.from(container.querySelectorAll('.task-item')).map(item => item.dataset.id);
-                    const reorderedTasks = [];
-                    newOrderIds.forEach(id => {
-                        const task = tasks.find(t => t.id === id);
-                        if (task) reorderedTasks.push(task);
-                    });
-                    tasks = reorderedTasks;
-                    saveStateToLocal();
+            const newOrderIds = Array.from(container.querySelectorAll('.task-item')).map(item => item.dataset.id);
+            const newOrderIdsSet = new Set(newOrderIds);
+            
+            // 1. Get the reordered visible tasks
+            const reorderedVisibleTasks = [];
+            newOrderIds.forEach(id => {
+                const task = tasks.find(t => t.id === id);
+                if (task) reorderedVisibleTasks.push(task);
+            });
+            
+            // 2. Get the tasks that were NOT in the current view (preserve them!)
+            const invisibleTasks = tasks.filter(t => !newOrderIdsSet.has(t.id));
+            
+            // 3. Combine them. 
+            // We put invisible tasks first, then reordered visible tasks.
+            // This ensures that when we switch views, the tasks are still there.
+            // Since we filter by view mode anyway, the relative order of invisible vs visible doesn't matter for display.
+            tasks = [...invisibleTasks, ...reorderedVisibleTasks];
+            
+            saveStateToLocal();
                 }
             });
 

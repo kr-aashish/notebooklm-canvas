@@ -1187,15 +1187,29 @@
         let activeDay = 1;
         let isDayWiseSplitEnabled = true;
         let isRearrangeMode = false;
-        let isWeeklyView = false; // Default to Daily view
+        let viewMode = 'daily'; // 'daily', 'weekly', 'all'
         let isAutoSyncEnabled = true; // Default to Auto Sync enabled
 
         const mainContentContainer = document.getElementById('main-content');
         const titleElement = document.querySelector('header h1');
         const subtitleElement = document.querySelector('header p');
 
-        async function initialLoad() {
-            // Load toggle state from localStorage
+        // Helper to update view mode UI
+    function updateViewModeUI() {
+        const viewBtns = document.querySelectorAll('.view-btn');
+        viewBtns.forEach(btn => {
+            if (btn.dataset.mode === viewMode) {
+                btn.classList.remove('text-gray-400', 'hover:text-gray-200');
+                btn.classList.add('bg-gray-600', 'text-white', 'shadow');
+            } else {
+                btn.classList.add('text-gray-400', 'hover:text-gray-200');
+                btn.classList.remove('bg-gray-600', 'text-white', 'shadow');
+            }
+        });
+    }
+
+    async function initialLoad() {
+        // Load toggle state from localStorage
             const savedToggleState = localStorage.getItem('isDayWiseSplitEnabled');
             if (savedToggleState !== null) {
                 isDayWiseSplitEnabled = savedToggleState === 'true';
@@ -1219,13 +1233,7 @@
             // However, we need to make sure UI reflects the loaded state (toggles) if we loaded from LOCAL
             if (!success) {
                  // Update UI for toggles based on local state
-                const viewToggle = document.getElementById('view-toggle');
-                const viewLabel = document.getElementById('view-toggle-label');
-                if (viewToggle) {
-                    if (isWeeklyView) viewToggle.classList.add('active');
-                    else viewToggle.classList.remove('active');
-                }
-                if (viewLabel) viewLabel.textContent = isWeeklyView ? "View: Weekly" : "View: Daily";
+                updateViewModeUI();
 
                 const dayWiseToggle = document.getElementById('day-wise-toggle');
                 if (dayWiseToggle) {
@@ -1277,17 +1285,15 @@
                     subtitleElement.textContent = record.studyTrackerSubtitle;
                 }
                 
-                if (record.studyIsWeeklyView !== undefined) {
-                    isWeeklyView = record.studyIsWeeklyView;
-                    localStorage.setItem('studyIsWeeklyView', isWeeklyView.toString());
-                    // Update UI
-                    const viewToggle = document.getElementById('view-toggle');
-                    const viewLabel = document.getElementById('view-toggle-label');
-                    if (viewToggle) {
-                        if (isWeeklyView) viewToggle.classList.add('active');
-                        else viewToggle.classList.remove('active');
-                    }
-                    if (viewLabel) viewLabel.textContent = isWeeklyView ? "View: Weekly" : "View: Daily";
+                if (record.studyViewMode) {
+                    viewMode = record.studyViewMode;
+                    localStorage.setItem('studyViewMode', viewMode);
+                    updateViewModeUI();
+                } else if (record.studyIsWeeklyView !== undefined) {
+                    // Migration from cloud
+                    viewMode = record.studyIsWeeklyView ? 'weekly' : 'daily';
+                    localStorage.setItem('studyViewMode', viewMode);
+                    updateViewModeUI();
                 }
 
                 if (record.studyIsDayWiseSplitEnabled !== undefined) {
@@ -1378,10 +1384,10 @@
                 studyDailyProgressState: JSON.parse(localStorage.getItem('studyDailyProgressState') || '{}'),
                 studyTrackerTitle: localStorage.getItem('studyTrackerTitle'),
                 studyTrackerSubtitle: localStorage.getItem('studyTrackerSubtitle'),
-                studyIsWeeklyView: isWeeklyView,
-                studyIsDayWiseSplitEnabled: isDayWiseSplitEnabled
+                studyViewMode: viewMode,
+                studyIsDayWiseSplitEnabled: isDayWiseSplitEnabled,
+                studyIsAutoSyncEnabled: isAutoSyncEnabled
             };
-
             const pushButton = document.getElementById('push-button');
             pushButton.disabled = true;
             pushButton.innerHTML = 'Pushing...';
@@ -1439,8 +1445,9 @@
                         studyDailyProgressState: JSON.parse(localStorage.getItem('studyDailyProgressState') || '{}'),
                         studyTrackerTitle: localStorage.getItem('studyTrackerTitle'),
                         studyTrackerSubtitle: localStorage.getItem('studyTrackerSubtitle'),
-                        studyIsWeeklyView: isWeeklyView,
-                        studyIsDayWiseSplitEnabled: isDayWiseSplitEnabled
+                        studyViewMode: viewMode,
+                        studyIsDayWiseSplitEnabled: isDayWiseSplitEnabled,
+                        studyIsAutoSyncEnabled: isAutoSyncEnabled
                     };
 
                     const response = await fetch(UPSERT_URL, {
@@ -1470,8 +1477,9 @@
             localStorage.setItem('studyTasks', JSON.stringify(tasks));
             localStorage.setItem('studyProgressState', JSON.stringify(progressState));
             localStorage.setItem('studyDailyProgressState', JSON.stringify(dailyProgressState));
-            localStorage.setItem('studyIsWeeklyView', isWeeklyView.toString());
+            localStorage.setItem('studyViewMode', viewMode);
             localStorage.setItem('studyIsDayWiseSplitEnabled', isDayWiseSplitEnabled.toString());
+            localStorage.setItem('studyIsAutoSyncEnabled', isAutoSyncEnabled.toString());
             
             if (!isInitialLoad) {
                 debouncedAutoSync();
@@ -1498,8 +1506,16 @@
             progressState = JSON.parse(localStorage.getItem('studyProgressState') || '{}');
             dailyProgressState = JSON.parse(localStorage.getItem('studyDailyProgressState') || '{}');
             
-            const savedIsWeeklyView = localStorage.getItem('studyIsWeeklyView');
-            if (savedIsWeeklyView !== null) isWeeklyView = savedIsWeeklyView === 'true';
+            const savedViewMode = localStorage.getItem('studyViewMode');
+            if (savedViewMode) {
+                viewMode = savedViewMode;
+            } else {
+                // Migration: Check for old boolean
+                const savedIsWeeklyView = localStorage.getItem('studyIsWeeklyView');
+                if (savedIsWeeklyView !== null) {
+                    viewMode = savedIsWeeklyView === 'true' ? 'weekly' : 'daily';
+                }
+            }
 
             const savedIsDayWiseSplitEnabled = localStorage.getItem('studyIsDayWiseSplitEnabled');
             if (savedIsDayWiseSplitEnabled !== null) isDayWiseSplitEnabled = savedIsDayWiseSplitEnabled === 'true';
@@ -1767,11 +1783,10 @@
                     <div id="countdown-timer"></div>
                 </div>
                 <div class="toggle-container">
-                    <div class="flex items-center gap-4">
-                        <span class="toggle-label" id="view-toggle-label">${isWeeklyView ? "View: Weekly" : "View: Daily"}</span>
-                        <div class="toggle-switch ${isWeeklyView ? 'active' : ''}" id="view-toggle">
-                            <div class="toggle-slider"></div>
-                        </div>
+                    <div class="flex items-center gap-2 bg-gray-700 rounded-lg p-1 border border-gray-600">
+                        <button class="view-btn px-3 py-1 rounded-md text-sm font-medium transition-all ${viewMode === 'daily' ? 'bg-gray-600 text-white shadow' : 'text-gray-400 hover:text-gray-200'}" data-mode="daily">Daily</button>
+                        <button class="view-btn px-3 py-1 rounded-md text-sm font-medium transition-all ${viewMode === 'weekly' ? 'bg-gray-600 text-white shadow' : 'text-gray-400 hover:text-gray-200'}" data-mode="weekly">Weekly</button>
+                        <button class="view-btn px-3 py-1 rounded-md text-sm font-medium transition-all ${viewMode === 'all' ? 'bg-gray-600 text-white shadow' : 'text-gray-400 hover:text-gray-200'}" data-mode="all">All</button>
                     </div>
                     <div class="flex items-center gap-4">
                         <span class="toggle-label" id="auto-sync-toggle-label">${isAutoSyncEnabled ? "Auto Sync: On" : "Auto Sync: Off"}</span>
@@ -1833,17 +1848,17 @@
 
         // NEW: Setup toggle event listener
         function setupToggleEventListener() {
-            const viewToggle = document.getElementById('view-toggle');
-            if (viewToggle) {
-                viewToggle.addEventListener('click', () => {
-                    isWeeklyView = !isWeeklyView;
-                    viewToggle.classList.toggle('active');
-                    const label = document.getElementById('view-toggle-label');
-                    if (label) label.textContent = isWeeklyView ? "View: Weekly" : "View: Daily";
+            // REMOVED: Old toggle listener setup
+            // NEW: Setup view mode buttons
+            const viewBtns = document.querySelectorAll('.view-btn');
+            viewBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    viewMode = btn.dataset.mode;
+                    updateViewModeUI();
                     renderDayContent(activeDay);
                     saveStateToLocal();
                 });
-            }
+            });
 
             const autoSyncToggle = document.getElementById('auto-sync-toggle');
             if (autoSyncToggle) {
@@ -1936,12 +1951,18 @@
             tasksContainer.className = 'space-y-4';
             
             // Filter tasks based on view mode
-            const visibleTasks = tasks.filter(task => isWeeklyView ? task.trackingMode === 'weekly' : task.trackingMode === 'daily');
-            
-            if (visibleTasks.length === 0) {
-                const modeText = isWeeklyView ? 'Weekly' : 'Daily';
-                tasksContainer.innerHTML = `<div class="text-center text-gray-500 py-10">No ${modeText} tasks yet. Add one below!</div>`;
-            } else {
+    const visibleTasks = tasks.filter(task => {
+        if (viewMode === 'all') return true;
+        return task.trackingMode === viewMode;
+    });
+    
+    if (visibleTasks.length === 0) {
+        let modeText = 'Daily';
+        if (viewMode === 'weekly') modeText = 'Weekly';
+        if (viewMode === 'all') modeText = 'tasks';
+        
+        tasksContainer.innerHTML = `<div class="text-center text-gray-500 py-10">No ${modeText} tasks yet. Add one below!</div>`;
+    } else {
                 visibleTasks.forEach((task, taskIndex) => {
                     const taskItem = document.createElement('div');
                     taskItem.className = 'task-item'; 
